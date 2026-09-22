@@ -4,6 +4,17 @@
 
 Le projet utilise notamment **Tailscale** afin de permettre une connexion distante sécurisée entre les appareils sans avoir à ouvrir directement de ports sur Internet.
 
+> [!WARNING]
+> ### 🚧 Application encore en développement
+>
+> ** TelecomHand est actuellement en cours de développement actif.**
+>
+> Certaines fonctionnalités peuvent encore présenter des **bugs**, de légères **latences** ou des comportements inattendus selon l'appareil, la version d'Android ou l'application utilisée.
+>
+> Le projet évolue régulièrement afin d'améliorer la **fluidité**, la **précision de frappe**, la **stabilité**, les **suggestions** et la **correction de texte**.
+>
+> Merci de garder à l'esprit qu'il ne s'agit pas encore d'une version totalement stable.
+
 ---
 
 ## 📦 Téléchargements
