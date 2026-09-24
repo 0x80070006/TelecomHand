@@ -34,13 +34,13 @@
 
 <p align="center">
 
-[![Android](https://img.shields.io/badge/Android-Télécharger_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/TelecomHandv1.3/TelecomHand-Android-v1.3.apk)
+[![Android](https://img.shields.io/badge/Android-Télécharger_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-Android-v1.5.apk)
 
-[![Windows](https://img.shields.io/badge/Windows-Télécharger-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/TelecomHandv1.3/TelecomHand-Windows-x64.zip)
+[![Windows](https://img.shields.io/badge/Windows-Télécharger-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-Windows-x64-v1.5.zip)
 
-[![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Télécharger-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/TelecomHandv1.3/TelecomHand-RaspberryPi.tar.gz)
+[![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Télécharger-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-RaspberryPi.tar.gz)
 
-[![Release v1.3](https://img.shields.io/badge/GitHub-Release_TelecomHand_v1.3-181717?style=for-the-badge&logo=github)](https://github.com/0x80070006/TelecomHand/releases/tag/TelecomHandv1.3)
+[![Release v1.5](https://img.shields.io/badge/GitHub-Release_TelecomHand_v1.3-181717?style=for-the-badge&logo=github)](https://github.com/0x80070006/TelecomHand/releases/tag/v1.5)
 
 </p>
 
