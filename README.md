@@ -14,7 +14,7 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-agent-0078D6?style=flat-square&logo=windows&logoColor=white">
   <img alt="Linux" src="https://img.shields.io/badge/Linux%20%2F%20Raspberry%20Pi-agent-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="Tailscale" src="https://img.shields.io/badge/Tailscale-recommand%C3%A9-242424?style=flat-square&logo=tailscale&logoColor=white">
-  <a href="https://github.com/0x80070006/TelecomHand/releases/tag/TelecomHandv1.3"><img alt="Release v1.3" src="https://img.shields.io/badge/Release-v1.3-6C63FF?style=flat-square"></a>
+  <a href="https://github.com/0x80070006/TelecomHand/releases/tag/v1.7"><img alt="Release v1.7" src="https://img.shields.io/badge/Release-v1.7-6C63FF?style=flat-square"></a>
 </p>
 
 > [!WARNING]
@@ -34,13 +34,13 @@
 
 <p align="center">
 
-[![Android](https://img.shields.io/badge/Android-Télécharger_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-Android-v1.5.apk)
+[![Android](https://img.shields.io/badge/Android-Télécharger_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.7/TelecomHand-Android-v1.7.apk)
 
-[![Windows](https://img.shields.io/badge/Windows-Télécharger-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-Windows-x64-v1.5.zip)
+[![Windows](https://img.shields.io/badge/Windows-Télécharger-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.7/TelecomHand-Windows-x64-v1.7.zip)
 
-[![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Télécharger-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.5/TelecomHand-RaspberryPi.tar.gz)
+[![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Télécharger-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white)](https://github.com/0x80070006/TelecomHand/releases/download/v1.7/TelecomHand-RaspberryPi-v1.7.tar.gz)
 
-[![Release v1.5](https://img.shields.io/badge/GitHub-Release_TelecomHand_v1.3-181717?style=for-the-badge&logo=github)](https://github.com/0x80070006/TelecomHand/releases/tag/v1.5)
+[![Release v1.7](https://img.shields.io/badge/GitHub-Release_TelecomHand_v1.7-181717?style=for-the-badge&logo=github)](https://github.com/0x80070006/TelecomHand/releases/tag/v1.7)
 
 </p>
 
@@ -61,6 +61,9 @@ TelecomHand transforme votre téléphone Android en télécommande pour vos ordi
 | Raccourcis système dédiés | ✅ | — |
 | Sélection de la sortie audio | — | ✅ |
 | Connexion via Tailscale | ✅ | ✅ |
+| Lanceur d’applications | ✅ | ✅ |
+| Média et contrôles de lecture | ✅ | ✅ |
+| Jeux Moonlight et jaquettes | — | ✅ RaspyTV |
 
 ---
 
@@ -178,7 +181,7 @@ Code : <VOTRE_CODE>
 
 ### 📲 Android
 
-Téléchargez **`TelecomHand-Android-v1.3.apk`**, puis installez l'APK sur votre téléphone. Android peut demander l'autorisation d'installer des applications provenant de sources externes.
+Téléchargez **`TelecomHand-Android-v1.7.apk`**, puis installez l'APK sur votre téléphone. Android peut demander l'autorisation d'installer des applications provenant de sources externes.
 
 Une fois l'application installée :
 
@@ -191,7 +194,7 @@ Une fois l'application installée :
 
 ### 🪟 Windows
 
-Téléchargez **`TelecomHand-Windows-x64.zip`** depuis la [release v1.3](https://github.com/0x80070006/TelecomHand/releases/tag/TelecomHandv1.3), décompressez l'archive puis utilisez l'installateur fourni.
+Téléchargez **`TelecomHand-Windows-x64-v1.7.zip`** depuis la [release v1.7](https://github.com/0x80070006/TelecomHand/releases/tag/v1.7), décompressez l'archive puis utilisez l'installateur fourni.
 
 Le paquet contient notamment les scripts nécessaires à l'installation de TelecomHand comme **service Windows**. Une fois installé :
 
@@ -209,10 +212,10 @@ TelecomHand Remote Control
 
 ### 🥧 Raspberry Pi / Linux
 
-Téléchargez **`TelecomHand-RaspberryPi.tar.gz`**, puis extrayez l'archive :
+Téléchargez **`TelecomHand-RaspberryPi-v1.7.tar.gz`**, puis extrayez l'archive :
 
 ```bash
-tar -xzf TelecomHand-RaspberryPi.tar.gz
+tar -xzf TelecomHand-RaspberryPi-v1.7.tar.gz
 cd TelecomHand-RaspberryPi
 ```
 
@@ -333,15 +336,15 @@ L'utilisation de Tailscale permet de faire transiter les connexions à travers l
 
 ---
 
-## 📁 Fichiers de la release v1.3
+## 📁 Fichiers de la release v1.7
 
 ```text
-TelecomHand-Android-v1.3.apk
-TelecomHand-Windows-x64.zip
-TelecomHand-RaspberryPi.tar.gz
+TelecomHand-Android-v1.7.apk
+TelecomHand-Windows-x64-v1.7.zip
+TelecomHand-RaspberryPi-v1.7.tar.gz
 ```
 
-➡️ **[Ouvrir la release TelecomHand v1.3](https://github.com/0x80070006/TelecomHand/releases/tag/TelecomHandv1.3)**
+➡️ **[Ouvrir la release TelecomHand v1.7](https://github.com/0x80070006/TelecomHand/releases/tag/v1.7)**
 
 ---
 
@@ -358,21 +361,17 @@ TelecomHand donne accès au clavier, à la souris et à certaines fonctions syst
 
 ---
 
-## 🚀 TelecomHand v1.3
+## 🚀 TelecomHand v1.7
 
-La version **v1.3** ajoute notamment :
+La version **v1.7** apporte une interface plus nette et des intégrations RaspyTV plus complètes :
 
-- prise en charge du type d'appareil Windows / Linux ;
-- panneau de commandes spécifique à Windows ;
-- touche Windows ;
-- raccourcis `Ctrl` et `Alt` ;
-- verrouillage Windows avec `Win + L` ;
-- contrôle du volume ;
-- sélection de la sortie audio sous Linux ;
-- vrai Backspace distant ;
-- nouvelles tailles d'icône Android ;
-- amélioration du service Windows ;
-- meilleure intégration avec Tailscale.
+- thèmes Noir et Blanc, avec les thèmes CP2077, Tron, Matrix et pastel ;
+- logos transparents réels pour Windows, Linux et les applications du Stream Deck ;
+- tuiles applicatives sans emojis ni décorations superflues ;
+- lanceur RaspyTV, contrôles média et grille de jeux Moonlight ;
+- jaquettes de jeux récupérées automatiquement depuis Moonlight ;
+- agent Raspberry Pi compatible Wayland, démarrage automatique et contrôle clavier fiabilisé ;
+- raccourcis Windows, verrouillage de session et service Windows renforcés.
 
 ---
 
