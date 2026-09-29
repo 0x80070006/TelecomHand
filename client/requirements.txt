@@ -1,0 +1,13 @@
+PyAutoGUI==0.9.54
+Pillow==11.3.0
+# Windows only: lecture de la session média système (GSMTC)
+winrt-runtime==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"
+winrt-Windows.System==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Search==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Provider==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.FileProperties==3.2.1; sys_platform == "win32"
+winrt-Windows.Media.Control==3.2.1; sys_platform == "win32"
