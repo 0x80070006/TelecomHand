@@ -2,19 +2,19 @@
 
 Télécommande Android pour contrôler un ordinateur Windows ou une machine Linux / Raspberry Pi sur un réseau privé.
 
-**État :** APK Android v1.8 publié ; archives Windows et Raspberry Pi disponibles en v1.7. Le dépôt inclut désormais le projet Android, le code des agents et leurs scripts d'installation. La compilation Android de cette source locale avait été validée avant publication ; la reconstruction de tous les paquets de release et l'installation sur un appareil neuf n'ont pas été vérifiées dans cet audit.
+**État :** APK Android v1.8.0 publié ; archives Windows et Raspberry Pi disponibles en v1.7.0. Le dépôt inclut désormais le projet Android, le code des agents et leurs scripts d'installation. La compilation Android de cette source locale avait été validée avant publication ; la reconstruction de tous les paquets de release et l'installation sur un appareil neuf n'ont pas été vérifiées dans cet audit.
 
 ## Télécharger
 
 | Plateforme | Version publiée | Fichier |
 | --- | --- | --- |
-| Android | v1.8 | [TelecomHand-Android-v1.8.apk](https://github.com/0x80070006/TelecomHand/releases/download/v1.8/TelecomHand-Android-v1.8.apk) |
-| Windows x64 | v1.7 | [TelecomHand-Windows-x64-v1.7.zip](https://github.com/0x80070006/TelecomHand/releases/download/v1.7/TelecomHand-Windows-x64-v1.7.zip) |
-| Raspberry Pi | v1.7 | [TelecomHand-RaspberryPi-v1.7.tar.gz](https://github.com/0x80070006/TelecomHand/releases/download/v1.7/TelecomHand-RaspberryPi-v1.7.tar.gz) |
+| Android | v1.8.0 | [TelecomHand-Android-v1.8.0.apk](https://github.com/0x80070006/TelecomHand/releases/download/v1.8.0/TelecomHand-Android-v1.8.0.apk) |
+| Windows x64 | v1.7.0 | [TelecomHand-Windows-x64-v1.7.0.zip](https://github.com/0x80070006/TelecomHand/releases/download/v1.7.0/TelecomHand-Windows-x64-v1.7.0.zip) |
+| Raspberry Pi | v1.7.0 | [TelecomHand-RaspberryPi-v1.7.0.tar.gz](https://github.com/0x80070006/TelecomHand/releases/download/v1.7.0/TelecomHand-RaspberryPi-v1.7.0.tar.gz) |
 
 [Toutes les releases](https://github.com/0x80070006/TelecomHand/releases). Ne combinez pas les numéros de version sans vérifier la compatibilité entre client et agent.
 
-**Sécurité des agents v1.7 et antérieurs :** ces archives ont été publiées avant le correctif de génération d'un code aléatoire. Après installation, définissez dans `config.json` un code unique d'au moins 16 caractères et limitez l'accès au réseau privé. Le correctif est présent dans les sources actuelles ; il n'a pas été intégré rétroactivement aux anciennes archives. Si un agent était accessible avec son code d'origine, remplacez ce code.
+**Sécurité des agents v1.7.0 et antérieurs :** ces archives ont été publiées avant le correctif de génération d'un code aléatoire. Après installation, définissez dans `config.json` un code unique d'au moins 16 caractères et limitez l'accès au réseau privé. Le correctif est présent dans les sources actuelles ; il n'a pas été intégré rétroactivement aux anciennes archives. Si un agent était accessible avec son code d'origine, remplacez ce code.
 
 ![Accueil TelecomHand](docs/images/home.png)
 
@@ -28,7 +28,7 @@ Autres captures : [pavé tactile](docs/images/trackpad.png), [clavier](docs/imag
 
 ## Installation
 
-1. Installez l'agent correspondant à la machine contrôlée depuis la release v1.7.
+1. Installez l'agent correspondant à la machine contrôlée depuis la release v1.7.0.
 2. Connectez le téléphone et la machine au même réseau privé.
 3. Installez l'APK Android, puis configurez l'adresse de l'agent et le code d'accès dans l'application.
 4. Testez la connexion, le pointeur et l'aperçu d'écran avant d'utiliser les commandes système.
