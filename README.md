@@ -14,6 +14,8 @@ Télécommande Android pour contrôler un ordinateur Windows ou une machine Linu
 
 [Toutes les releases](https://github.com/0x80070006/TelecomHand/releases). Ne combinez pas les numéros de version sans vérifier la compatibilité entre client et agent.
 
+**Sécurité des agents v1.7 et antérieurs :** ces archives ont été publiées avant le correctif de génération d'un code aléatoire. Après installation, définissez dans `config.json` un code unique d'au moins 16 caractères et limitez l'accès au réseau privé. Le correctif est présent dans les sources actuelles ; il n'a pas été intégré rétroactivement aux anciennes archives. Si un agent était accessible avec son code d'origine, remplacez ce code.
+
 ![Accueil TelecomHand](docs/images/home.png)
 
 Autres captures : [pavé tactile](docs/images/trackpad.png), [clavier](docs/images/keyboard.png) et [aperçu d'écran](docs/images/screen-preview.png).
