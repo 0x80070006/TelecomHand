@@ -1,0 +1,14 @@
+[Unit]
+Description=TelecomHand remote control agent
+After=graphical-session.target network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/telecomhand
+ExecStart=/opt/telecomhand/.venv/bin/python /opt/telecomhand/telecomhand_client.py
+Restart=on-failure
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+
+[Install]
+WantedBy=graphical-session.target

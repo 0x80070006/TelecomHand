@@ -1,0 +1,21 @@
+[Unit]
+Description=TelecomHand remote control
+After=network-online.target display-manager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__USER__
+SupplementaryGroups=input
+WorkingDirectory=__HOME__/.local/share/telecomhand
+ExecStart=__HOME__/.local/share/telecomhand/.venv/bin/python __HOME__/.local/share/telecomhand/telecomhand_client.py
+Restart=always
+RestartSec=3
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/__UID__
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
+
+[Install]
+WantedBy=multi-user.target

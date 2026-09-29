@@ -1,0 +1,46 @@
+TELECOMHAND POUR WINDOWS
+========================
+
+INSTALLATION COMME SERVICE WINDOWS (recommandee)
+------------------------------------------------
+Double-cliquez sur Installer-service-Windows.cmd puis acceptez la demande UAC.
+Le service « TelecomHand Remote Control » demarre avec Windows, supervise
+l'agent dans la session graphique active et le relance automatiquement.
+L'icone TelecomHand apparait dans la zone de notification Windows, sans
+fenetre de console. Son menu permet de redemarrer l'agent.
+
+Fichiers installes :
+- agent : C:\Users\Public\TelecomHand
+- service : C:\ProgramData\TelecomHand
+
+Le meme installateur configure egalement le service Tailscale en demarrage
+automatique avec trois tentatives de redemarrage apres une panne.
+
+ANCIEN MODE SANS SERVICE
+------------------------
+Installer-demarrage-automatique.cmd cree uniquement une tache a l'ouverture
+de session. Utilisez-le seulement si l'installation du service est impossible.
+
+INSTALLATION MANUELLE
+---------------------
+1. Double-cliquez sur TelecomHand-Windows.exe.
+2. Au premier lancement, Windows peut demander l'autorisation réseau :
+   cochez uniquement « Réseaux privés », puis autorisez.
+3. L'adresse IP à saisir dans l'application mobile apparaît dans la fenêtre.
+   Avec Tailscale, utilisez la ligne « IP Tailscale recommandée » (adresse 100.x).
+4. Dans l'app mobile :
+   - Nom : ce que vous voulez, par exemple « PC Windows »
+   - Adresse : l'IP affichée
+   - Port : 45870
+   - Code : consultez config.json créé à côté de l'exécutable au premier lancement.
+
+En lancement manuel, gardez l'executable ouvert pendant l'utilisation.
+
+Le fichier config.json créé à côté de l'exécutable permet de modifier le port
+et le code. Redémarrez ensuite le client.
+
+Ce client est prévu pour votre réseau local privé. N'ouvrez pas les ports
+45870 et 45871 sur votre routeur Internet.
+
+Si Tailscale ne parvient pas à joindre le client, autorisez
+TelecomHand-Windows.exe dans le pare-feu Windows pour l'interface Tailscale.
