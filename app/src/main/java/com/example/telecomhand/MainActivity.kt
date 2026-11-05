@@ -3,60 +3,89 @@ package com.example.telecomhand
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.annotation.DrawableRes
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.telecomhand.ui.theme.TelecomHandTheme
 import coil.compose.AsyncImage
+import com.example.telecomhand.ui.theme.ActionBlue
+import com.example.telecomhand.ui.theme.ActionGreen
+import com.example.telecomhand.ui.theme.ActionPink
+import com.example.telecomhand.ui.theme.ActionRed
+import com.example.telecomhand.ui.theme.Hairline
+import com.example.telecomhand.ui.theme.TelecomHandTheme
+import com.example.telecomhand.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
@@ -73,40 +102,18 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
-private enum class AppVisualTheme(val label: String) {
-    CLASSIC("Bleu classique"), CYBERPUNK("CP2077"), TRON("Tron"), MATRIX("Matrix"),
-    BLACK("Noir"), WHITE("Blanc"), LAVENDER("Lavande pâle"), MINT("Menthe pâle"), CORAL("Corail")
-}
-
-private data class ThemePalette(
-    val accent: Color, val secondary: Color, val ink: Color, val panel: Color,
-    val muted: Color, val outline: Color, val top: Color, val padTop: Color,
-    val primaryEnd: Color, val secondaryEnd: Color
-)
-
-private fun paletteFor(theme: AppVisualTheme) = when (theme) {
-    AppVisualTheme.CLASSIC -> ThemePalette(Color(0xFF39B9FF), Color(0xFF6865F6), Color(0xFF091425), Color(0xFF1A3155), Color(0xFFB0C4E8), Color(0xFF416393), Color(0xFF183966), Color(0xFF203F70), Color(0xFF1664EB), Color(0xFF3730AC))
-    AppVisualTheme.CYBERPUNK -> ThemePalette(Color(0xFFFFFF16), Color(0xFF00E6F3), Color(0xFF030B0D), Color(0xFF0A1D20), Color(0xFF9DF1F3), Color(0xFFE8EC17), Color(0xFF09212A), Color(0xFF0A2325), Color(0xFFD6CB00), Color(0xFF008C9B))
-    AppVisualTheme.TRON -> ThemePalette(Color(0xFF36D8FF), Color(0xFF8AF0FF), Color(0xFF020A13), Color(0xFF0A2031), Color(0xFF9BD9F4), Color(0xFF2EADE5), Color(0xFF061A2F), Color(0xFF0B2434), Color(0xFF006AAF), Color(0xFF13618E))
-    AppVisualTheme.MATRIX -> ThemePalette(Color(0xFF58FF8B), Color(0xFFB0FFD0), Color(0xFF010B07), Color(0xFF092016), Color(0xFFB1EAC3), Color(0xFF22B95B), Color(0xFF042511), Color(0xFF092318), Color(0xFF0E9340), Color(0xFF23794C))
-    AppVisualTheme.BLACK -> ThemePalette(Color(0xFF4A90E2), Color(0xFF75B5F7), Color(0xFF050505), Color(0xFF111111), Color(0xFFBBBBBB), Color(0xFF343434), Color(0xFF0B0B0B), Color(0xFF111111), Color(0xFF2869B8), Color(0xFF3D7CC2))
-    AppVisualTheme.WHITE -> ThemePalette(Color(0xFF1769C2), Color(0xFF4F91D4), Color(0xFFF5F5F5), Color(0xFFFFFFFF), Color(0xFF626262), Color(0xFFD1D1D1), Color(0xFFFFFFFF), Color(0xFFF7F7F7), Color(0xFF155FAE), Color(0xFF3E7FBA))
-    AppVisualTheme.LAVENDER -> ThemePalette(Color(0xFFD6BDFF), Color(0xFFFFCBEB), Color(0xFF171628), Color(0xFF33304E), Color(0xFFE3D7F0), Color(0xFF9485B5), Color(0xFF393351), Color(0xFF403957), Color(0xFF9B7AD3), Color(0xFFB177B3))
-    AppVisualTheme.MINT -> ThemePalette(Color(0xFFB5F4DE), Color(0xFFB9E2FF), Color(0xFF102120), Color(0xFF25453F), Color(0xFFD3ECE4), Color(0xFF729E91), Color(0xFF2E5650), Color(0xFF31534B), Color(0xFF7DB9A8), Color(0xFF79A4B5))
-    AppVisualTheme.CORAL -> ThemePalette(Color(0xFFFF997E), Color(0xFFFFD37B), Color(0xFF25141C), Color(0xFF51313A), Color(0xFFF0CAD0), Color(0xFFA96D7D), Color(0xFF512B3B), Color(0xFF56343C), Color(0xFFD96B6F), Color(0xFFBB7753))
-}
-
-private var activeTheme by mutableStateOf(AppVisualTheme.CLASSIC)
-private val currentPalette get() = paletteFor(activeTheme)
-private val Accent get() = currentPalette.accent
-private val Ink get() = currentPalette.ink
-private val Panel get() = currentPalette.panel
-private val Muted get() = currentPalette.muted
-private val CardOutline get() = currentPalette.outline
-private val ContentColor get() = if (activeTheme == AppVisualTheme.WHITE) Color(0xFF161616) else Color.White
-private val MainShape get() = RoundedCornerShape(12.dp)
+private val KeyShape = RoundedCornerShape(10.dp)
+// Niveaux de gris éclaircis : un logo sombre (Netflix, Twitch) reste lisible sur fond noir.
+private val GrayscaleFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
+    setToSaturation(0f)
+    this[0, 4] = 95f
+    this[1, 4] = 95f
+    this[2, 4] = 95f
+})
 
 data class RemoteDevice(
     val id: String = UUID.randomUUID().toString(),
@@ -122,7 +129,7 @@ enum class DeviceOs { WINDOWS, LINUX }
 private data class AudioOutput(val id: String, val name: String, val active: Boolean)
 
 enum class ConnectionState { OFFLINE, CONNECTING, CONNECTED }
-private enum class AppTab { HOME, KEYBOARD, SHORTCUTS, MORE }
+private enum class Screen { HOME, KEYBOARD, MORE, SHORTCUTS, PREVIEW, SETTINGS }
 private data class RemoteTile(val id: String, val name: String, val image: String = "")
 private data class MediaInfo(val available: Boolean = false, val title: String = "", val artist: String = "", val playing: Boolean = false, val position: Int = 0, val duration: Int = 0)
 private data class RemoteState(val raspyTv: Boolean = false, val apps: List<RemoteTile> = emptyList(), val games: List<RemoteTile> = emptyList(), val media: MediaInfo = MediaInfo())
@@ -146,18 +153,13 @@ private fun tileAsset(id: String, name: String = ""): Int = when {
     else -> R.drawable.logo_moonlight
 }
 
-@Composable
-private fun AssetLogo(@DrawableRes resource: Int, description: String?, modifier: Modifier = Modifier) {
-    Image(painter = painterResource(resource), contentDescription = description, modifier = modifier, contentScale = androidx.compose.ui.layout.ContentScale.Fit)
-}
-
-private data class TrailPixel(val position: Offset, val bornAt: Long, val size: Float)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        activeTheme = DeviceStore(this).loadTheme()
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         setContent { TelecomHandTheme { TelecomHandApp() } }
     }
 }
@@ -168,14 +170,12 @@ private fun TelecomHandApp() {
     val store = remember { DeviceStore(context) }
     var devices by remember { mutableStateOf(store.load()) }
     var selectedId by remember { mutableStateOf(store.selectedId()) }
-    var settingsOpen by remember { mutableStateOf(false) }
-    var screenMode by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(AppTab.HOME) }
-    var theme by remember { mutableStateOf(store.loadTheme()) }
+    var screen by remember { mutableStateOf(Screen.HOME) }
     val selected = devices.firstOrNull { it.id == selectedId } ?: devices.firstOrNull()
     val connection = remember { RemoteConnection() }
     var connectionState by remember { mutableStateOf(ConnectionState.OFFLINE) }
     var remoteState by remember { mutableStateOf(RemoteState()) }
+    val connected = connectionState == ConnectionState.CONNECTED
 
     DisposableEffect(selected) {
         if (selected == null) {
@@ -193,236 +193,297 @@ private fun TelecomHandApp() {
             connection.send("ping")
         }
     }
-    LaunchedEffect(selected, connectionState, selectedTab) {
+    LaunchedEffect(selected, connectionState, screen) {
         if (selected == null || connectionState != ConnectionState.CONNECTED) {
             remoteState = RemoteState()
             return@LaunchedEffect
         }
         while (isActive) {
             remoteState = withContext(Dispatchers.IO) { connection.fetchRemoteState(selected) }
-            delay(if (selectedTab == AppTab.MORE) 2500 else 8000)
+            delay(if (screen == Screen.MORE) 2500 else 8000)
         }
     }
 
-    Surface(Modifier.fillMaxSize(), color = Ink) {
-        Box(Modifier.fillMaxSize().background(Ink)) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
-                TopBar(
-                    selected, connectionState, devices,
-                    onSelect = { selectedId = it.id; store.select(it.id); selectedTab = AppTab.HOME },
-                    onSettings = { settingsOpen = true }
+    fun back() {
+        screen = if (screen == Screen.SHORTCUTS || screen == Screen.PREVIEW) Screen.MORE else Screen.HOME
+    }
+    BackHandler(enabled = screen != Screen.HOME) { back() }
+
+    Surface(Modifier.fillMaxSize(), color = Color.Black) {
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(110)) },
+            label = "screen",
+            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
+        ) { current ->
+            when (current) {
+                Screen.HOME -> HomeScreen(
+                    selected, devices, connectionState, connection,
+                    onSelect = { selectedId = it.id; store.select(it.id) },
+                    onNavigate = { screen = it }
                 )
-                Spacer(Modifier.height(12.dp))
-                AnimatedContent(selectedTab, label = "main-tab", modifier = Modifier.weight(1f)) { tab ->
-                    when (tab) {
-                        AppTab.HOME -> HomeScreen(selected, connection, connectionState, screenMode, { screenMode = it }, { selectedTab = AppTab.KEYBOARD }, { selectedTab = AppTab.SHORTCUTS })
-                        AppTab.KEYBOARD -> KeyboardScreen(connectionState == ConnectionState.CONNECTED, connection)
-                        AppTab.SHORTCUTS -> ShortcutsScreen(selected, connection, connectionState == ConnectionState.CONNECTED, remoteState)
-                        AppTab.MORE -> MoreScreen(selected, connection, connectionState == ConnectionState.CONNECTED, remoteState)
+                Screen.KEYBOARD -> SubScreen("Clavier", ::back) { KeyboardScreen(connected, connection) }
+                Screen.MORE -> SubScreen("Plus", ::back) {
+                    MoreScreen(connection, connected, remoteState) { screen = it }
+                }
+                Screen.SHORTCUTS -> SubScreen("Raccourcis", ::back) { ShortcutsScreen(selected, connection, connected, remoteState) }
+                Screen.PREVIEW -> SubScreen("Écran", ::back) { ScreenPreview(selected, connection) }
+                Screen.SETTINGS -> SubScreen("Appareils", ::back) {
+                    DevicesScreen(devices) { updated ->
+                        devices = updated
+                        if (selectedId !in updated.map { it.id }) selectedId = updated.firstOrNull()?.id
+                        store.save(updated, selectedId)
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                BottomNavigation(
-                    selectedTab,
-                    onSelect = { selectedTab = it }
-                )
             }
         }
     }
-
-    if (settingsOpen) {
-        DeviceManager(devices, theme, onThemeChange = {
-            theme = it
-            activeTheme = it
-            store.saveTheme(it)
-        }, onDismiss = { settingsOpen = false }) { updated ->
-            devices = updated
-            if (selectedId !in updated.map { it.id }) selectedId = updated.firstOrNull()?.id
-            store.save(updated, selectedId)
-            settingsOpen = false
-        }
-    }
 }
+
+// Accueil
 
 @Composable
 private fun HomeScreen(
-    selected: RemoteDevice?, connection: RemoteConnection, state: ConnectionState,
-    screenMode: Boolean, onModeChange: (Boolean) -> Unit, onKeyboard: () -> Unit, onShortcuts: () -> Unit
+    selected: RemoteDevice?, devices: List<RemoteDevice>, state: ConnectionState, connection: RemoteConnection,
+    onSelect: (RemoteDevice) -> Unit, onNavigate: (Screen) -> Unit
 ) {
+    val connected = state == ConnectionState.CONNECTED
     Column(Modifier.fillMaxSize()) {
-        ModeSwitch(screenMode, onModeChange)
-        Spacer(Modifier.height(10.dp))
-        AnimatedContent(screenMode, label = "control-mode", modifier = Modifier.weight(1f)) { preview ->
-            if (preview) ScreenPreview(selected, connection) else TouchSurface(connection, state)
+        HomeHeader(selected, devices, state, onSelect) { onNavigate(Screen.SETTINGS) }
+        Row(Modifier.weight(1f).fillMaxWidth()) {
+            TouchSurface(connection, selected == null, Modifier.weight(1f).fillMaxHeight())
+            ScrollRail(
+                enabled = connected,
+                os = selected?.os ?: DeviceOs.WINDOWS,
+                onScroll = { connection.send("scroll", "dy" to it) },
+                modifier = Modifier.width(44.dp).fillMaxHeight()
+            )
         }
-        Spacer(Modifier.height(10.dp))
-        QuickControls(
-            enabled = state == ConnectionState.CONNECTED, keyboardOpen = false,
-            onLeft = { connection.send("click", "button" to "left") }, onKeyboard = onKeyboard,
-            onRight = { connection.send("click", "button" to "right") }
-        )
-        Spacer(Modifier.height(7.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            CompactButton("Vol −", "−", state == ConnectionState.CONNECTED, Modifier.weight(1f)) { connection.send("volume", "action" to "down") }
-            CompactButton("Muet", "×", state == ConnectionState.CONNECTED, Modifier.weight(1f)) { connection.send("volume", "action" to "mute") }
-            CompactButton("Vol +", "+", state == ConnectionState.CONNECTED, Modifier.weight(1f)) { connection.send("volume", "action" to "up") }
-        }
-        Spacer(Modifier.height(7.dp))
-        FlatNavigationRow(
-            if (selected?.os == DeviceOs.LINUX) R.drawable.logo_linux else R.drawable.logo_windows,
-            if (selected?.os == DeviceOs.WINDOWS) "Raccourcis Windows" else "Raccourcis Linux", onShortcuts
-        )
-    }
-}
-
-@Composable
-private fun BottomNavigation(
-    selected: AppTab, onSelect: (AppTab) -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth().clip(MainShape)
-            .background(Ink)
-            .border(.5.dp, CardOutline.copy(alpha = .75f), MainShape)
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        val tabs = listOf(
-            Triple(Icons.Outlined.Home, "Accueil", AppTab.HOME),
-            Triple(Icons.Outlined.Keyboard, "Clavier", AppTab.KEYBOARD),
-            Triple(Icons.Outlined.GridView, "Raccourcis", AppTab.SHORTCUTS),
-            Triple(Icons.Outlined.MoreHoriz, "Plus", AppTab.MORE)
-        )
-        tabs.forEach { tab ->
-            val active = selected == tab.third
-            Column(
-                Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { onSelect(tab.third) }
-                    .padding(vertical = 3.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(tab.first, null, tint = if (active) Accent else Muted, modifier = Modifier.size(18.dp))
-                Text(tab.second, color = if (active) Accent else Muted, fontSize = 9.sp, maxLines = 1)
-            }
+        Row(
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            ActionButton("Gauche", ActionBlue, connected, onClick = { connection.send("click", "button" to "left") }) { MouseGlyph(left = true, ActionBlue) }
+            ActionButton("Droit", ActionRed, connected, onClick = { connection.send("click", "button" to "right") }) { MouseGlyph(left = false, ActionRed) }
+            ActionButton("Clavier", ActionGreen, true, onClick = { onNavigate(Screen.KEYBOARD) }) { ActionIcon(Icons.Outlined.Keyboard, ActionGreen) }
+            ActionButton("Plus", ActionPink, true, onClick = { onNavigate(Screen.MORE) }) { ActionIcon(Icons.Outlined.MoreHoriz, ActionPink) }
         }
     }
 }
 
 @Composable
-private fun FlatNavigationRow(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(48.dp).clip(MainShape).background(Panel)
-            .border(.5.dp, CardOutline, MainShape).clickable(onClick = onClick).padding(horizontal = 13.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AssetLogo(icon, null, Modifier.size(19.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(label, color = ContentColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.weight(1f))
-        Icon(Icons.Outlined.ChevronRight, null, tint = Muted, modifier = Modifier.size(18.dp))
-    }
-}
-
-@Composable
-private fun TopBar(
-    selected: RemoteDevice?, state: ConnectionState, devices: List<RemoteDevice>,
+private fun HomeHeader(
+    selected: RemoteDevice?, devices: List<RemoteDevice>, state: ConnectionState,
     onSelect: (RemoteDevice) -> Unit, onSettings: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(Modifier.fillMaxWidth().height(56.dp).padding(start = 8.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            Box(
-                Modifier.fillMaxWidth().clip(MainShape).background(Panel)
-                    .border(.5.dp, CardOutline, MainShape).clickable { expanded = true }
+            Row(
+                Modifier.clip(KeyShape).clickable { if (devices.isEmpty()) onSettings() else expanded = true }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AssetLogo(
-                        if (selected?.os == DeviceOs.LINUX) R.drawable.logo_linux else R.drawable.logo_windows,
-                        selected?.os?.name, Modifier.size(24.dp)
+                StatusDot(state)
+                Spacer(Modifier.width(10.dp))
+                Text(selected?.name ?: "Aucun appareil", color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp))
+                if (state != ConnectionState.CONNECTED && selected != null) {
+                    Text(
+                        if (state == ConnectionState.CONNECTING) "  connexion" else "  hors ligne",
+                        color = TextSecondary, fontSize = 13.sp, maxLines = 1
                     )
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(selected?.name ?: "Aucun appareil", color = ContentColor, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(7.dp).background(when (state) {
-                                ConnectionState.CONNECTED -> Color(0xFF48E3AE)
-                                ConnectionState.CONNECTING -> Color(0xFFFFC857)
-                                ConnectionState.OFFLINE -> Color(0xFFFF667A)
-                            }, CircleShape))
-                            Spacer(Modifier.width(5.dp))
-                            Text(when (state) {
-                                ConnectionState.CONNECTED -> "Connecté"
-                                ConnectionState.CONNECTING -> "Connexion…"
-                                ConnectionState.OFFLINE -> "Hors ligne"
-                            }, color = if (state == ConnectionState.CONNECTED) Color(0xFF58E8BA) else Muted, fontSize = 10.sp)
-                        }
-                    }
-                    Icon(Icons.Outlined.ChevronRight, null, tint = Muted, modifier = Modifier.size(20.dp))
                 }
             }
-            DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-                devices.forEach { device -> DropdownMenuItem(
-                    text = { Text(device.name) },
-                    onClick = { expanded = false; onSelect(device) },
-                    trailingIcon = { if (device.id == selected?.id) Text("✓", color = Accent) }
-                ) }
-                if (devices.isEmpty()) DropdownMenuItem(text = { Text("Ajoutez un appareil") }, onClick = onSettings)
+            DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Color(0xFF141414), shape = KeyShape) {
+                devices.forEach { device ->
+                    DropdownMenuItem(
+                        text = { Text(device.name, color = Color.White) },
+                        trailingIcon = { if (device.id == selected?.id) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+                        onClick = { expanded = false; onSelect(device) }
+                    )
+                }
             }
         }
-        Column(Modifier.weight(1.16f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row {
-                Text("Telecom", color = ContentColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Hand", color = Accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-            Text(if (selected?.os == DeviceOs.LINUX) "Contrôlez votre Linux" else "Contrôlez votre PC", color = Muted, fontSize = 10.sp, maxLines = 1)
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Outlined.Settings, "Appareils", tint = Color.White, modifier = Modifier.size(22.dp))
         }
+    }
+}
+
+@Composable
+private fun StatusDot(state: ConnectionState) {
+    val shape = CircleShape
+    val modifier = Modifier.size(7.dp)
+    when (state) {
+        ConnectionState.CONNECTED -> Box(modifier.background(Color.White, shape))
+        ConnectionState.CONNECTING -> Box(modifier.background(TextSecondary, shape))
+        ConnectionState.OFFLINE -> Box(modifier.border(1.dp, TextSecondary, shape))
+    }
+}
+
+@Composable
+private fun ActionButton(label: String, color: Color, enabled: Boolean, onClick: () -> Unit, glyph: @Composable () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val alpha = if (enabled) 1f else .3f
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(42.dp).clip(CircleShape).background(Panel)
-                .border(.5.dp, CardOutline, CircleShape).clickable(onClick = onSettings),
+            Modifier.size(58.dp).graphicsLayer { this.alpha = alpha }.clip(CircleShape)
+                .background(if (pressed) color.copy(alpha = .22f) else Color.Black)
+                .border(1.5.dp, color, CircleShape)
+                .clickable(source, null, enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label, onClick = onClick),
             contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Outlined.Settings, "Paramètres", tint = Muted, modifier = Modifier.size(21.dp))
-        }
+        ) { glyph() }
+        Spacer(Modifier.height(7.dp))
+        Text(label, color = TextSecondary, fontSize = 11.sp, maxLines = 1)
     }
 }
 
 @Composable
-private fun ModeSwitch(screenMode: Boolean, onChange: (Boolean) -> Unit) {
-    Box(Modifier.fillMaxWidth().clip(MainShape).background(Panel).border(.5.dp, CardOutline, MainShape)) {
-        Row(Modifier.padding(4.dp)) {
-            ModeTab(Icons.Outlined.TouchApp, "Pavé tactile", !screenMode, Modifier.weight(1f)) { onChange(false) }
-            ModeTab(Icons.Outlined.Monitor, "Aperçu écran", screenMode, Modifier.weight(1f)) { onChange(true) }
+private fun ActionIcon(icon: ImageVector, color: Color) {
+    Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+}
+
+/** Souris dont seul le bouton concerné est plein : gauche et droit se distinguent sans texte. */
+@Composable
+private fun MouseGlyph(left: Boolean, color: Color) {
+    Canvas(Modifier.size(width = 16.dp, height = 24.dp)) {
+        val stroke = 1.5.dp.toPx()
+        val radius = CornerRadius(size.width / 2f, size.width / 2f)
+        val half = size.width / 2f
+        val split = size.height * .42f
+        clipRect(left = if (left) 0f else half, top = 0f, right = if (left) half else size.width, bottom = split) {
+            drawRoundRect(color, cornerRadius = radius)
         }
+        drawRoundRect(
+            color, topLeft = Offset(stroke / 2f, stroke / 2f),
+            size = Size(size.width - stroke, size.height - stroke),
+            cornerRadius = radius, style = Stroke(stroke)
+        )
+        drawLine(color, Offset(0f, split), Offset(size.width, split), stroke)
+        drawLine(color, Offset(half, 0f), Offset(half, split), stroke)
+    }
+}
+
+// Traînée du doigt
+
+private const val TrailLifetimeMs = 900f
+
+private class TrailPoint(val position: Offset, val time: Long, val stroke: Int)
+
+private class FingerTrail {
+    val points = ArrayList<TrailPoint>()
+    var stroke = 0
+        private set
+    var head by mutableStateOf<Offset?>(null)
+        private set
+    var held by mutableStateOf(false)
+    var frame by mutableLongStateOf(0L)
+    var animating by mutableStateOf(false)
+        private set
+
+    fun begin(position: Offset) {
+        stroke++
+        head = position
+        push(position)
+        animating = true
+    }
+
+    fun move(position: Offset) {
+        head = position
+        val last = points.lastOrNull()
+        if (last == null || last.stroke != stroke || (last.position - position).getDistance() >= 1.5f) push(position)
+    }
+
+    fun end() {
+        head = null
+        held = false
+    }
+
+    private fun push(position: Offset) {
+        points += TrailPoint(position, SystemClock.uptimeMillis(), stroke)
+    }
+
+    /** Retire les points éteints et indique s'il reste quelque chose à animer. */
+    fun step(now: Long): Boolean {
+        points.removeAll { now - it.time > TrailLifetimeMs }
+        val alive = points.isNotEmpty() || head != null
+        if (!alive) animating = false
+        return alive
+    }
+}
+
+private fun catmullRom(p0: Offset, p1: Offset, p2: Offset, p3: Offset, t: Float): Offset {
+    val t2 = t * t
+    val t3 = t2 * t
+    return Offset(
+        .5f * (2 * p1.x + (p2.x - p0.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (3 * p1.x - p0.x - 3 * p2.x + p3.x) * t3),
+        .5f * (2 * p1.y + (p2.y - p0.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (3 * p1.y - p0.y - 3 * p2.y + p3.y) * t3)
+    )
+}
+
+/**
+ * Ruban lissé qui s'affine et s'éteint avec l'âge. Tracé en niveaux de gris opaques avec le mode
+ * Lighten : les segments se recouvrent sans former de perles aux jointures.
+ */
+private fun DrawScope.drawTrail(trail: FingerTrail, now: Long) {
+    val maxWidth = 9.dp.toPx()
+    val step = 3.dp.toPx()
+    val head = trail.head
+    val points = if (head != null) trail.points + TrailPoint(head, now, trail.stroke) else trail.points
+
+    fun shade(time: Float): Pair<Color, Float>? {
+        val life = 1f - (now - time) / TrailLifetimeMs
+        if (life <= 0f) return null
+        val level = life.pow(1.8f)
+        return Color(level, level, level) to maxWidth * (.12f + .88f * life.pow(1.3f))
+    }
+
+    points.forEachIndexed { index, point ->
+        val next = points.getOrNull(index + 1)?.takeIf { it.stroke == point.stroke }
+        if (next == null) {
+            val previousSame = points.getOrNull(index - 1)?.stroke == point.stroke
+            if (!previousSame) shade(point.time.toFloat())?.let { (color, width) ->
+                drawCircle(color, width / 2f, point.position, blendMode = BlendMode.Lighten)
+            }
+            return@forEachIndexed
+        }
+        val before = points.getOrNull(index - 1)?.takeIf { it.stroke == point.stroke } ?: point
+        val after = points.getOrNull(index + 2)?.takeIf { it.stroke == point.stroke } ?: next
+        val divisions = ((next.position - point.position).getDistance() / step).toInt().coerceIn(1, 14)
+        var from = point.position
+        for (division in 1..divisions) {
+            val t = division.toFloat() / divisions
+            val to = catmullRom(before.position, point.position, next.position, after.position, t)
+            shade(point.time + (next.time - point.time) * t)?.let { (color, width) ->
+                drawLine(color, from, to, width, StrokeCap.Round, blendMode = BlendMode.Lighten)
+            }
+            from = to
+        }
+    }
+
+    if (head != null) {
+        drawCircle(Color.White, maxWidth * .55f, head)
+        if (trail.held) drawCircle(Color.White, 20.dp.toPx(), head, style = Stroke(1.dp.toPx()))
     }
 }
 
 @Composable
-private fun ModeTab(icon: ImageVector, label: String, active: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Box(modifier.clip(MainShape).background(if (active) Accent.copy(alpha = .12f) else Color.Transparent).clickable(onClick = onClick)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = if (active) Accent else Muted, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(label, color = if (active) Accent else Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun TouchSurface(connection: RemoteConnection, state: ConnectionState) {
-    var gestureLabel by remember { mutableStateOf("Glissez pour déplacer") }
-    var activePosition by remember { mutableStateOf<Offset?>(null) }
-    var trail by remember { mutableStateOf<List<TrailPixel>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        while (isActive) {
+private fun TouchSurface(connection: RemoteConnection, noDevice: Boolean, modifier: Modifier = Modifier) {
+    val trail = remember { FingerTrail() }
+    LaunchedEffect(trail.animating) {
+        while (isActive && trail.animating) {
+            withFrameMillis { }
             val now = SystemClock.uptimeMillis()
-            trail = trail.filter { now - it.bornAt < 560L }
-            delay(16)
+            trail.step(now)
+            trail.frame = now
         }
     }
-    Surface(
-        modifier = Modifier.fillMaxSize().pointerInput(connection) {
+    Box(
+        modifier.pointerInput(connection) {
             awaitEachGesture {
                 val first = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
-                activePosition = first.position
-                trail = trail + TrailPixel(first.position, SystemClock.uptimeMillis(), 9f)
+                trail.begin(first.position)
                 val startedAt = SystemClock.uptimeMillis()
                 val longPressDelay = 380L
                 val movementThreshold = viewConfiguration.touchSlop
@@ -435,113 +496,222 @@ private fun TouchSurface(connection: RemoteConnection, state: ConnectionState) {
                 var scrollRemainder = 0f
                 try {
                     while (true) {
-                    val remaining = longPressDelay - (SystemClock.uptimeMillis() - startedAt)
-                    val event = if (!moved && !dragging && remaining > 0) {
-                        withTimeoutOrNull(remaining) {
+                        val remaining = longPressDelay - (SystemClock.uptimeMillis() - startedAt)
+                        val event = if (!moved && !dragging && remaining > 0) {
+                            withTimeoutOrNull(remaining) { awaitPointerEvent(PointerEventPass.Main) }
+                        } else {
                             awaitPointerEvent(PointerEventPass.Main)
                         }
-                    } else {
-                        awaitPointerEvent(PointerEventPass.Main)
-                    }
-                    if (event == null) {
-                        dragging = true
-                        connection.send("button_down", "button" to "left")
-                        gestureLabel = "Clic gauche maintenu"
-                        continue
-                    }
-                    val pressed = event.changes.filter { it.pressed }
-                    if (pressed.isEmpty()) {
-                        if (dragging) {
-                            connection.send("button_up", "button" to "left")
-                            dragging = false
+                        if (event == null) {
+                            dragging = true
+                            trail.held = true
+                            connection.send("button_down", "button" to "left")
+                            continue
                         }
-                        else if (!moved && !usedTwoFingers) connection.send("click", "button" to "left")
-                        break
-                    }
-                    if (pressed.size >= 2) {
-                        if (dragging) {
-                            connection.send("button_up", "button" to "left")
-                            dragging = false
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.isEmpty()) {
+                            if (dragging) {
+                                connection.send("button_up", "button" to "left")
+                                dragging = false
+                            } else if (!moved && !usedTwoFingers) connection.send("click", "button" to "left")
+                            break
                         }
-                        usedTwoFingers = true
-                        moved = true
-                        val averageY = pressed.take(2).map { it.position.y }.average().toFloat()
-                        val previousCenter = lastScrollCenter
-                        val dy = if (previousCenter == null) 0f else averageY - previousCenter
-                        val averageX = pressed.take(2).map { it.position.x }.average().toFloat()
-                        activePosition = Offset(averageX, averageY)
-                        trail = (trail + TrailPixel(Offset(averageX, averageY), SystemClock.uptimeMillis(), 7f)).takeLast(56)
-                        scrollRemainder += -dy * .24f
-                        val scrollSteps = scrollRemainder.toInt()
-                        if (scrollSteps != 0) {
-                            connection.send("scroll", "dy" to scrollSteps)
-                            scrollRemainder -= scrollSteps
-                            gestureLabel = "Défilement à deux doigts"
-                        }
-                        lastScrollCenter = averageY
-                        last = pressed[0].position
-                    } else {
-                        val current = pressed[0].position
-                        val delta = if (lastScrollCenter != null) Offset.Zero else current - last
-                        activePosition = current
-                        if (delta.getDistance() >= .35f) {
-                            val now = SystemClock.uptimeMillis()
-                            val steps = (delta.getDistance() / 10f).roundToInt().coerceIn(1, 6)
-                            val additions = (1..steps).map { step ->
-                                val fraction = step.toFloat() / steps
-                                TrailPixel(last + delta * fraction, now - ((steps - step) * 12L), 5f + 5f * fraction)
+                        if (pressed.size >= 2) {
+                            if (dragging) {
+                                connection.send("button_up", "button" to "left")
+                                dragging = false
+                                trail.held = false
                             }
-                            trail = (trail + additions).takeLast(56)
+                            usedTwoFingers = true
+                            moved = true
+                            val averageY = pressed.take(2).map { it.position.y }.average().toFloat()
+                            val averageX = pressed.take(2).map { it.position.x }.average().toFloat()
+                            val previousCenter = lastScrollCenter
+                            if (previousCenter == null) trail.begin(Offset(averageX, averageY)) else trail.move(Offset(averageX, averageY))
+                            val dy = if (previousCenter == null) 0f else averageY - previousCenter
+                            scrollRemainder += -dy * .24f
+                            val scrollSteps = scrollRemainder.toInt()
+                            if (scrollSteps != 0) {
+                                connection.send("scroll", "dy" to scrollSteps)
+                                scrollRemainder -= scrollSteps
+                            }
+                            lastScrollCenter = averageY
+                            last = pressed[0].position
+                        } else {
+                            val current = pressed[0].position
+                            val delta = if (lastScrollCenter != null) Offset.Zero else current - last
+                            if (lastScrollCenter != null) trail.begin(current) else trail.move(current)
+                            lastScrollCenter = null
+                            travelled += delta.getDistance()
+                            if (travelled >= movementThreshold) moved = true
+                            if (abs(delta.x) + abs(delta.y) >= .35f) {
+                                val dx = (delta.x * 1.35f).roundToInt()
+                                val dy = (delta.y * 1.35f).roundToInt()
+                                if (dx != 0 || dy != 0) connection.send("move", "dx" to dx, "dy" to dy)
+                            }
+                            last = current
                         }
-                        lastScrollCenter = null
-                        travelled += delta.getDistance()
-                        if (travelled >= movementThreshold) moved = true
-                        if (abs(delta.x) + abs(delta.y) >= .35f) {
-                            val dx = (delta.x * 1.35f).roundToInt()
-                            val dy = (delta.y * 1.35f).roundToInt()
-                            if (dx != 0 || dy != 0) connection.send("move", "dx" to dx, "dy" to dy)
-                        }
-                        last = current
-                    }
-                    event.changes.forEach { it.consume() }
+                        event.changes.forEach { it.consume() }
                     }
                 } finally {
                     if (dragging) connection.send("button_up", "button" to "left")
-                    activePosition = null
-                    gestureLabel = "Glissez pour déplacer"
+                    trail.end()
                 }
             }
         },
-        color = Panel, shape = MainShape,
-        border = androidx.compose.foundation.BorderStroke(.5.dp, CardOutline)
+        contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.fillMaxSize().background(Panel)) {
-            Canvas(Modifier.fillMaxSize()) {
-                val accent = Accent
-                val now = SystemClock.uptimeMillis()
-                trail.forEach { pixel ->
-                    val life = (1f - (now - pixel.bornAt) / 560f).coerceIn(0f, 1f)
-                    val side = (pixel.size * life.coerceAtLeast(.35f)).dp.toPx()
-                    drawRect(
-                        color = accent.copy(alpha = .72f * life),
-                        topLeft = pixel.position - Offset(side / 2f, side / 2f),
-                        size = androidx.compose.ui.geometry.Size(side, side)
-                    )
-                }
-                val rawKnob = activePosition ?: Offset(size.width - 18.dp.toPx(), size.height - 18.dp.toPx())
-                val safeRadius = 8.dp.toPx()
-                val knob = Offset(
-                    rawKnob.x.coerceIn(safeRadius, size.width - safeRadius),
-                    rawKnob.y.coerceIn(safeRadius, size.height - safeRadius)
-                )
-                drawCircle(accent, if (activePosition == null) 2.5.dp.toPx() else 5.dp.toPx(), knob)
-            }
-            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (state == ConnectionState.CONNECTED) gestureLabel else "Connectez un appareil", color = Muted, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-                Text("clic · appui long · défilement à 2 doigts", color = Muted.copy(alpha = .65f), fontSize = 8.sp)
+        Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
+            trail.frame // relit le dessin à chaque image de l'animation
+            drawRect(Color.Black)
+            drawTrail(trail, SystemClock.uptimeMillis())
+        }
+        if (noDevice) Text("Ajoutez un appareil", color = TextSecondary, fontSize = 13.sp)
+    }
+}
+
+// Rail de défilement
+
+private const val ScrollMinNotchesPerSecond = 1.2f
+private const val ScrollMaxNotchesPerSecond = 30f
+private const val ScrollDeadZone = .04f
+
+/** Crans par seconde : très lent près du centre, rapide seulement en bout de course. */
+private fun scrollRate(deflection: Float): Float {
+    val amount = abs(deflection)
+    if (amount < ScrollDeadZone) return 0f
+    val normalized = (amount - ScrollDeadZone) / (1f - ScrollDeadZone)
+    return ScrollMinNotchesPerSecond + (ScrollMaxNotchesPerSecond - ScrollMinNotchesPerSecond) * normalized.pow(2.6f)
+}
+
+@Composable
+private fun ScrollRail(enabled: Boolean, os: DeviceOs, onScroll: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val thumb = remember { Animatable(0f) }
+    var held by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val latestOnScroll by rememberUpdatedState(onScroll)
+    // Windows compte 120 unités par cran et accepte les fractions ; l'agent Linux compte en crans entiers.
+    val unitsPerNotch = if (os == DeviceOs.WINDOWS) 120 else 1
+    val quantum = if (os == DeviceOs.WINDOWS) 30 else 1
+
+    LaunchedEffect(held, enabled, os) {
+        if (!held || !enabled) return@LaunchedEffect
+        var previous = withFrameNanos { it }
+        var remainder = 0f
+        while (isActive) {
+            val now = withFrameNanos { it }
+            val seconds = (now - previous) / 1_000_000_000f
+            previous = now
+            val deflection = thumb.value
+            // Tirer vers le haut remonte la page : valeur positive côté agent.
+            remainder += -sign(deflection) * scrollRate(deflection) * unitsPerNotch * seconds
+            val quanta = (remainder / quantum).toInt()
+            if (quanta != 0) {
+                latestOnScroll(quanta * quantum)
+                remainder -= quanta * quantum
             }
         }
     }
+
+    Canvas(
+        modifier.pointerInput(enabled) {
+            if (!enabled) return@pointerInput
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                down.consume()
+                val travel = size.height * RailTravelRatio
+                held = true
+                try {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        val deflection = ((change.position.y - down.position.y) / travel).coerceIn(-1f, 1f)
+                        scope.launch { thumb.snapTo(deflection) }
+                        change.consume()
+                    }
+                } finally {
+                    held = false
+                    scope.launch { thumb.animateTo(0f, spring(dampingRatio = .72f, stiffness = 500f)) }
+                }
+            }
+        }
+    ) {
+        val x = size.width / 2f
+        val middle = size.height / 2f
+        val travel = size.height * RailTravelRatio
+        val thumbY = middle + thumb.value * travel
+        val thumbHalf = 22.dp.toPx()
+        drawLine(Hairline, Offset(x, middle - travel - thumbHalf), Offset(x, middle + travel + thumbHalf), 1.dp.toPx(), StrokeCap.Round)
+        if (abs(thumbY - middle) > 1f) drawLine(Color.White.copy(alpha = .55f), Offset(x, middle), Offset(x, thumbY), 1.dp.toPx())
+        val width = (if (held) 6.dp else 4.dp).toPx()
+        drawRoundRect(
+            if (enabled) Color.White else Color(0xFF4A4A4A),
+            topLeft = Offset(x - width / 2f, thumbY - thumbHalf),
+            size = Size(width, thumbHalf * 2f),
+            cornerRadius = CornerRadius(width / 2f, width / 2f)
+        )
+    }
+}
+
+private const val RailTravelRatio = .42f
+
+// Écrans secondaires
+
+@Composable
+private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().height(56.dp).padding(start = 6.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Retour", tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(4.dp))
+            Text(title, color = Color.White, fontSize = 17.sp)
+        }
+        Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp), content = content)
+    }
+}
+
+@Composable
+private fun SectionLabel(label: String) {
+    Text(label, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 22.dp, bottom = 9.dp))
+}
+
+/** Touche sobre : contour fin, s'inverse en blanc à l'appui ou lorsqu'elle est active. */
+@Composable
+private fun Key(label: String, enabled: Boolean, modifier: Modifier = Modifier, active: Boolean = false, icon: ImageVector? = null, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val inverted = active || pressed
+    val content = when {
+        inverted -> Color.Black
+        enabled -> Color.White
+        else -> Color(0xFF555555)
+    }
+    Box(
+        modifier.height(46.dp).clip(KeyShape)
+            .background(if (inverted) Color.White else Color.Black)
+            .border(1.dp, if (inverted) Color.White else Hairline, KeyShape)
+            .clickable(source, null, enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (icon != null) Icon(icon, label, tint = content, modifier = Modifier.size(20.dp))
+        else Text(label, color = content, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp))
+    }
+}
+
+@Composable
+private fun NavigationRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(52.dp).clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+    }
+    HorizontalDivider(color = Hairline, thickness = 1.dp)
 }
 
 @Composable
@@ -555,93 +725,129 @@ private fun ScreenPreview(device: RemoteDevice?, connection: RemoteConnection) {
             delay(350)
         }
     }
-    Surface(Modifier.fillMaxSize(), color = Color.Black, shape = RoundedCornerShape(26.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.1f))) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (frame != null) Image(frame!!, "Écran distant", Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
-            else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(color = Accent, strokeWidth = 2.dp); Spacer(Modifier.height(12.dp)); Text(error ?: "Chargement de l’écran…", color = Muted)
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val image = frame
+        if (image != null) Image(image, "Écran distant", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        else Text(error ?: "Chargement de l’écran…", color = TextSecondary, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun LinuxAudioOutputPicker(device: RemoteDevice, connection: RemoteConnection, enabled: Boolean) {
+    var outputs by remember(device.id) { mutableStateOf<List<AudioOutput>>(emptyList()) }
+    var expanded by remember { mutableStateOf(false) }
+    var loading by remember(device.id) { mutableStateOf(true) }
+
+    LaunchedEffect(device.id, enabled) {
+        if (!enabled) return@LaunchedEffect
+        loading = true
+        outputs = withContext(Dispatchers.IO) { connection.fetchAudioOutputs(device) }
+        loading = false
+    }
+    val active = outputs.firstOrNull { it.active }
+
+    Box {
+        Row(
+            Modifier.fillMaxWidth().height(58.dp).clickable(enabled = enabled && !loading) { expanded = true },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Outlined.Speaker, null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Sortie audio", color = Color.White, fontSize = 14.sp)
+                Text(if (loading) "Recherche…" else active?.name ?: "Choisir un périphérique", color = TextSecondary, fontSize = 12.sp, maxLines = 1)
+            }
+            Icon(Icons.Outlined.ExpandMore, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+        }
+        DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Color(0xFF141414), shape = KeyShape) {
+            outputs.forEach { output ->
+                DropdownMenuItem(
+                    text = { Text(output.name, color = Color.White) },
+                    trailingIcon = { if (output.active) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+                    onClick = {
+                        expanded = false
+                        outputs = outputs.map { it.copy(active = it.id == output.id) }
+                        connection.send("audio_output", "id" to output.id)
+                    }
+                )
+            }
+            if (outputs.isEmpty() && !loading) DropdownMenuItem(text = { Text("Aucune sortie détectée", color = TextSecondary) }, onClick = {})
+        }
+    }
+    HorizontalDivider(color = Hairline, thickness = 1.dp)
+}
+
+@Composable
+private fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConnection) {
+    var text by remember { mutableStateOf("") }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { updated ->
+            if (enabled) {
+                var common = 0
+                val limit = minOf(text.length, updated.length)
+                while (common < limit && text[common] == updated[common]) common++
+                repeat(text.length - common) { connection.send("key", "value" to "backspace") }
+                if (common < updated.length) connection.send("text", "value" to updated.substring(common))
+            }
+            text = updated
+        },
+        modifier = Modifier.fillMaxWidth(), enabled = enabled, singleLine = true,
+        placeholder = { Text("Écrire…", color = TextSecondary) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+        keyboardActions = KeyboardActions(onSend = { connection.send("key", "value" to "enter") }),
+        trailingIcon = {
+            IconButton(onClick = { connection.send("key", "value" to "backspace") }, enabled = enabled) {
+                Icon(Icons.AutoMirrored.Outlined.Backspace, "Effacer", tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+        },
+        shape = KeyShape,
+        colors = monochromeFieldColors()
+    )
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        SectionLabel("Navigation")
+        KeyRows(enabled, connection, listOf(
+            listOf("home" to "Origine", "end" to "Fin", "pageup" to "Pg préc", "pagedown" to "Pg suiv"),
+            listOf("left" to "Gauche", "up" to "Haut", "down" to "Bas", "right" to "Droite")
+        ))
+        SectionLabel("Système")
+        KeyRows(enabled, connection, listOf(
+            listOf("escape" to "Échap", "tab" to "Tab", "capslock" to "Verr Maj"),
+            listOf("enter" to "Entrée", "space" to "Espace", "delete" to "Suppr")
+        ))
+        SectionLabel("Fonction")
+        KeyRows(enabled, connection, (1..12).chunked(4).map { row -> row.map { "f$it" to "F$it" } })
+    }
+}
+
+@Composable
+private fun monochromeFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Color.White,
+    unfocusedBorderColor = Hairline,
+    disabledBorderColor = Hairline,
+    cursorColor = Color.White,
+    focusedLabelColor = Color.White,
+    unfocusedLabelColor = TextSecondary,
+    focusedTextColor = Color.White,
+    unfocusedTextColor = Color.White
+)
+
+@Composable
+private fun KeyRows(enabled: Boolean, connection: RemoteConnection, rows: List<List<Pair<String, String>>>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { (key, label) ->
+                    Key(label, enabled, Modifier.weight(1f)) { connection.send("key", "value" to key) }
+                }
+                repeat((4 - row.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun QuickControls(enabled: Boolean, keyboardOpen: Boolean, onLeft: () -> Unit, onKeyboard: () -> Unit, onRight: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        ControlButton("Gauche", Icons.Outlined.Mouse, enabled, Modifier.weight(1f), onLeft)
-        ControlButton(if (keyboardOpen) "Fermer" else "Clavier", Icons.Outlined.Keyboard, true, Modifier.weight(1f), onKeyboard)
-        ControlButton("Droit", Icons.Outlined.Mouse, enabled, Modifier.weight(1f), onRight)
-    }
-}
-
-@Composable
-private fun ControlButton(label: String, icon: ImageVector, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Box(modifier.height(55.dp).clip(MainShape).background(Panel)
-        .border(.5.dp, if (enabled) CardOutline else CardOutline.copy(.5f), MainShape)
-        .clickable(enabled = enabled, onClick = onClick)) {
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = if (enabled) Muted else Muted.copy(.45f), modifier = Modifier.size(16.dp))
-            Text(label, color = if (enabled) ContentColor else Muted.copy(.5f), fontSize = 9.sp, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun SystemControls(
-    device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean,
-    shortcutsExpanded: Boolean, onShortcutsExpanded: (Boolean) -> Unit, audioMenuSignal: Int
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconCompactButton("Volume −", Icons.Outlined.VolumeDown, enabled, Modifier.weight(1f)) { connection.send("volume", "action" to "down") }
-            IconCompactButton("Muet", Icons.Outlined.VolumeOff, enabled, Modifier.weight(1f)) { connection.send("volume", "action" to "mute") }
-            IconCompactButton("Volume +", Icons.Outlined.VolumeUp, enabled, Modifier.weight(1f)) { connection.send("volume", "action" to "up") }
-        }
-        when (device?.os) {
-            DeviceOs.WINDOWS -> WindowsShortcutPanel(connection, enabled, device.id, shortcutsExpanded, onShortcutsExpanded)
-            DeviceOs.LINUX -> LinuxAudioOutputPicker(device, connection, enabled, audioMenuSignal)
-            null -> Unit
-        }
-    }
-}
-
-@Composable
-private fun IconCompactButton(label: String, icon: ImageVector, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        modifier = modifier.height(43.dp).clickable(enabled = enabled, onClick = onClick), shape = MainShape,
-        color = if (enabled) Panel else Panel.copy(.45f), border = androidx.compose.foundation.BorderStroke(.5.dp, CardOutline)
-    ) {
-        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = if (enabled) Accent else Muted.copy(.5f), modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(5.dp))
-            Text(label, color = if (enabled) ContentColor else Muted.copy(.5f), fontSize = 10.sp, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun CompactButton(
-    label: String, symbol: String, enabled: Boolean, modifier: Modifier = Modifier,
-    active: Boolean = false, onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier.height(43.dp).clickable(enabled = enabled, onClick = onClick),
-        shape = MainShape,
-        color = when { active -> Accent.copy(.1f); enabled -> Panel; else -> Panel.copy(.45f) },
-        border = androidx.compose.foundation.BorderStroke(.5.dp, if (active) Accent else CardOutline)
-    ) {
-        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            if (symbol.isNotBlank()) {
-                Text(symbol, color = if (active) ContentColor else Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(5.dp))
-            }
-            Text(label, color = if (enabled) ContentColor else Muted.copy(.5f), fontSize = 10.sp, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun WindowsShortcutPanel(connection: RemoteConnection, enabled: Boolean, deviceId: String, expanded: Boolean, onExpanded: (Boolean) -> Unit) {
+private fun WindowsShortcuts(connection: RemoteConnection, enabled: Boolean, deviceId: String) {
     var ctrlHeld by remember(deviceId) { mutableStateOf(false) }
     var altHeld by remember(deviceId) { mutableStateOf(false) }
     val latestCtrl by rememberUpdatedState(ctrlHeld)
@@ -660,366 +866,203 @@ private fun WindowsShortcutPanel(connection: RemoteConnection, enabled: Boolean,
         releaseModifiers()
         connection.send("hotkey", "keys" to JSONArray(keys.toList()))
     }
-
-    Surface(color = Panel, shape = MainShape, border = androidx.compose.foundation.BorderStroke(1.dp, CardOutline)) {
-        Column {
-            Row(
-                Modifier.fillMaxWidth().clickable { onExpanded(!expanded) }.padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AssetLogo(R.drawable.logo_windows, "Windows", Modifier.size(24.dp))
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("Raccourcis Windows", color = ContentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("Accès rapide aux actions courantes", color = Muted, fontSize = 10.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ChevronRight, null, tint = Muted)
-            }
-            AnimatedVisibility(expanded) {
-                Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 9.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        CompactButton("Démarrer", "", enabled, Modifier.weight(1f)) { hotkey("win") }
-                        CompactButton("Ctrl", "", enabled, Modifier.weight(1f), ctrlHeld) {
-                            val next = !ctrlHeld; ctrlHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "ctrl")
-                        }
-                        CompactButton("Alt", "", enabled, Modifier.weight(1f), altHeld) {
-                            val next = !altHeld; altHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "alt")
-                        }
-                        CompactButton("Verrouiller", "", enabled && connection.supportsScreenLock, Modifier.weight(1f)) { releaseModifiers(); connection.send("lock_screen") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        CompactButton("Changer", "", enabled, Modifier.weight(1f)) { hotkey("alt", "tab") }
-                        CompactButton("Bureau", "", enabled, Modifier.weight(1f)) { hotkey("win", "d") }
-                        CompactButton("Fichiers", "", enabled, Modifier.weight(1f)) { hotkey("win", "e") }
-                        CompactButton("Capture", "", enabled, Modifier.weight(1f)) { hotkey("win", "shift", "s") }
-                    }
-                    if (enabled && !connection.supportsScreenLock) Text(
-                        "Mettez à jour l’agent Windows pour activer le verrouillage.",
-                        color = Muted, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LinuxAudioOutputPicker(device: RemoteDevice, connection: RemoteConnection, enabled: Boolean, audioMenuSignal: Int) {
-    var outputs by remember(device.id) { mutableStateOf<List<AudioOutput>>(emptyList()) }
-    var expanded by remember { mutableStateOf(false) }
-    var loading by remember(device.id) { mutableStateOf(true) }
-
-    suspend fun refresh() {
-        loading = true
-        outputs = withContext(Dispatchers.IO) { connection.fetchAudioOutputs(device) }
-        loading = false
-    }
-    LaunchedEffect(device.id, enabled) { if (enabled) refresh() }
-    LaunchedEffect(audioMenuSignal) { if (audioMenuSignal > 0 && enabled) expanded = true }
-    val active = outputs.firstOrNull { it.active }
-
-    Box {
-        Surface(
-            Modifier.fillMaxWidth().clickable(enabled = enabled && !loading) { expanded = true },
-            color = Panel, shape = RoundedCornerShape(18.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, CardOutline)
-        ) {
-            Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Speaker, null, tint = Accent, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Sortie audio Linux", color = ContentColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Text(if (loading) "Recherche…" else active?.name ?: "Choisir un périphérique", color = Muted, fontSize = 10.sp, maxLines = 1)
-                }
-                Icon(Icons.Outlined.ExpandMore, null, tint = Muted, modifier = Modifier.size(20.dp))
-            }
-        }
-        DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-            outputs.forEach { output ->
-                DropdownMenuItem(
-                    text = { Text(output.name) },
-                    leadingIcon = { Icon(if (output.active) Icons.Outlined.RadioButtonChecked else Icons.Outlined.RadioButtonUnchecked, null, tint = if (output.active) Accent else Muted) },
-                    onClick = {
-                        expanded = false
-                        outputs = outputs.map { it.copy(active = it.id == output.id) }
-                        connection.send("audio_output", "id" to output.id)
-                    }
-                )
-            }
-            if (outputs.isEmpty() && !loading) DropdownMenuItem(text = { Text("Aucune sortie détectée") }, onClick = {})
-        }
-    }
-}
-
-@Composable
-private fun ScreenHeading(title: String, subtitle: String) {
-    Column(Modifier.padding(bottom = 10.dp)) {
-        Text(title, color = ContentColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = Muted, fontSize = 10.sp)
-    }
-}
-
-@Composable
-private fun SectionLabel(label: String) {
-    Text(label, color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 12.dp, bottom = 5.dp))
-}
-
-@Composable
-private fun KeyboardScreen(enabled: Boolean, connection: RemoteConnection) {
-    var text by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeading("Clavier", "Texte direct et touches spéciales")
-        OutlinedTextField(
-            value = text,
-            onValueChange = { updated ->
-                if (enabled) {
-                    var common = 0
-                    val limit = minOf(text.length, updated.length)
-                    while (common < limit && text[common] == updated[common]) common++
-                    repeat(text.length - common) { connection.send("key", "value" to "backspace") }
-                    if (common < updated.length) connection.send("text", "value" to updated.substring(common))
-                }
-                text = updated
-            },
-            modifier = Modifier.fillMaxWidth(), enabled = enabled, singleLine = true,
-            placeholder = { Text("Écrire du texte…") },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { connection.send("key", "value" to "enter") }),
-            trailingIcon = { IconButton(onClick = { connection.send("key", "value" to "backspace") }, enabled = enabled) { Icon(Icons.Outlined.Backspace, "Effacer", tint = Accent) } },
-            shape = MainShape,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Accent, unfocusedBorderColor = CardOutline)
-        )
-        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 12.dp)) {
-            SectionLabel("Navigation")
-            KeyRows(enabled, connection, listOf(
-                listOf("home" to "Origine", "end" to "Fin", "pageup" to "Pg préc", "pagedown" to "Pg suiv"),
-                listOf("left" to "Gauche", "up" to "Haut", "down" to "Bas", "right" to "Droite")
-            ))
-            SectionLabel("Système")
-            KeyRows(enabled, connection, listOf(
-                listOf("escape" to "Échap", "tab" to "Tab", "capslock" to "Verr Maj"),
-                listOf("enter" to "Entrée", "space" to "Espace", "delete" to "Suppr")
-            ))
-            SectionLabel("Fonction")
-            KeyRows(enabled, connection, (1..12).chunked(4).map { row -> row.map { "f$it" to "F$it" } })
-        }
-    }
-}
-
-@Composable
-private fun KeyRows(enabled: Boolean, connection: RemoteConnection, rows: List<List<Pair<String, String>>>) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { (key, label) ->
-                    CompactButton(label, "", enabled, Modifier.weight(1f)) { connection.send("key", "value" to key) }
-                }
-                repeat((4 - row.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Key("Démarrer", enabled, Modifier.weight(1f)) { hotkey("win") }
+            Key("Ctrl", enabled, Modifier.weight(1f), active = ctrlHeld) {
+                val next = !ctrlHeld; ctrlHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "ctrl")
             }
+            Key("Alt", enabled, Modifier.weight(1f), active = altHeld) {
+                val next = !altHeld; altHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "alt")
+            }
+            Key("Verrouiller", enabled && connection.supportsScreenLock, Modifier.weight(1f)) { releaseModifiers(); connection.send("lock_screen") }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Key("Changer", enabled, Modifier.weight(1f)) { hotkey("alt", "tab") }
+            Key("Bureau", enabled, Modifier.weight(1f)) { hotkey("win", "d") }
+            Key("Fichiers", enabled, Modifier.weight(1f)) { hotkey("win", "e") }
+            Key("Capture", enabled, Modifier.weight(1f)) { hotkey("win", "shift", "s") }
+        }
+        if (enabled && !connection.supportsScreenLock) Text(
+            "Mettez à jour l’agent Windows pour activer le verrouillage.",
+            color = TextSecondary, fontSize = 12.sp
+        )
     }
 }
 
 @Composable
-private fun ShortcutsScreen(device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean, remote: RemoteState) {
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeading("Raccourcis", if (device?.os == DeviceOs.WINDOWS) "Actions Windows" else if (remote.raspyTv) "Linux · RaspyTV détecté" else "Actions Linux")
-        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
-            when (device?.os) {
-                DeviceOs.WINDOWS -> {
-                    WindowsShortcutPanel(connection, enabled, device.id, true) {}
-                    SectionLabel("Édition")
-                    ShortcutRows(connection, enabled, listOf(
-                        listOf(listOf("ctrl", "c") to "Copier", listOf("ctrl", "v") to "Coller", listOf("ctrl", "x") to "Couper"),
-                        listOf(listOf("ctrl", "z") to "Annuler", listOf("ctrl", "a") to "Tout sélectionner", listOf("ctrl", "shift", "escape") to "Gestionnaire")
-                    ))
-                }
-                DeviceOs.LINUX -> {
-                    LinuxAudioOutputPicker(device, connection, enabled, 0)
-                    if (remote.raspyTv) {
-                        SectionLabel("RaspyTV")
-                        RemoteTileGrid(remote.apps, enabled) { connection.send("launch_app", "id" to it.id) }
-                        SectionLabel("Jeux Moonlight")
-                        RemoteTileGrid(remote.games, enabled) { connection.send("launch_game", "id" to it.id) }
-                    }
-                }
-                null -> Text("Ajoutez un appareil dans les paramètres.", color = Muted)
+private fun ColumnScope.ShortcutsScreen(device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean, remote: RemoteState) {
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        when (device?.os) {
+            DeviceOs.WINDOWS -> {
+                SectionLabel("Windows")
+                WindowsShortcuts(connection, enabled, device.id)
+                SectionLabel("Édition")
+                ShortcutRows(connection, enabled, listOf(
+                    listOf(listOf("ctrl", "c") to "Copier", listOf("ctrl", "v") to "Coller", listOf("ctrl", "x") to "Couper"),
+                    listOf(listOf("ctrl", "z") to "Annuler", listOf("ctrl", "a") to "Tout", listOf("ctrl", "shift", "escape") to "Tâches")
+                ))
             }
+            DeviceOs.LINUX -> LinuxAudioOutputPicker(device, connection, enabled)
+            null -> Text("Ajoutez un appareil.", color = TextSecondary, fontSize = 13.sp)
         }
     }
 }
 
 @Composable
 private fun ShortcutRows(connection: RemoteConnection, enabled: Boolean, rows: List<List<Pair<List<String>, String>>>) {
-    rows.forEach { row ->
-        Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            row.forEach { (keys, label) ->
-                CompactButton(label, "", enabled, Modifier.weight(1f)) { connection.send("hotkey", "keys" to JSONArray(keys)) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MoreScreen(device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean, remote: RemoteState) {
-    var showGames by remember(device?.id) { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeading("Plus", "Média et lanceur rapide")
-        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
-            MediaCard(remote.media, enabled) { connection.send("media_control", "action" to it) }
-            SectionLabel(if (remote.raspyTv) "RaspyTV" else "Lancer une application")
-            if (remote.raspyTv && remote.games.isNotEmpty()) {
-                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    FilterChip(!showGames, { showGames = false }, { Text("Applications") }, modifier = Modifier.weight(1f))
-                    Spacer(Modifier.width(7.dp))
-                    FilterChip(showGames, { showGames = true }, { Text("Jeux") }, modifier = Modifier.weight(1f))
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { (keys, label) ->
+                    Key(label, enabled, Modifier.weight(1f)) { connection.send("hotkey", "keys" to JSONArray(keys)) }
                 }
             }
-            val tiles = if (showGames && remote.raspyTv) remote.games else remote.apps
-            RemoteTileGrid(tiles, enabled) { tile -> connection.send(if (showGames) "launch_game" else "launch_app", "id" to tile.id) }
-            if (tiles.isEmpty()) Text(if (enabled) "Mettez l’agent de cet appareil à jour." else "Appareil hors ligne.", color = Muted, fontSize = 11.sp)
         }
     }
 }
 
 @Composable
-private fun MediaCard(media: MediaInfo, enabled: Boolean, onControl: (String) -> Unit) {
-    Surface(color = Panel, shape = MainShape, border = androidx.compose.foundation.BorderStroke(.5.dp, CardOutline)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-            Text(if (media.available) media.title else "Aucune lecture active", color = ContentColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            Text(if (media.available) media.artist.ifBlank { "Appareil distant" } else "Les contrôles restent disponibles", color = Muted, fontSize = 10.sp, maxLines = 1)
-            if (media.duration > 0) LinearProgressIndicator(
-                progress = { (media.position.toFloat() / media.duration).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp).height(2.dp), color = Accent, trackColor = CardOutline
-            ) else Spacer(Modifier.height(9.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { onControl("previous") }, enabled = enabled) { Icon(Icons.Outlined.SkipPrevious, "Précédent", tint = Muted) }
-                IconButton(onClick = { onControl("play_pause") }, enabled = enabled) { Icon(if (media.playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, if (media.playing) "Pause" else "Lecture", tint = Accent, modifier = Modifier.size(26.dp)) }
-                IconButton(onClick = { onControl("next") }, enabled = enabled) { Icon(Icons.Outlined.SkipNext, "Suivant", tint = Muted) }
+private fun ColumnScope.MoreScreen(connection: RemoteConnection, enabled: Boolean, remote: RemoteState, onNavigate: (Screen) -> Unit) {
+    var showGames by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        SectionLabel("Volume")
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Key("Baisser", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeDown) { connection.send("volume", "action" to "down") }
+            Key("Muet", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeOff) { connection.send("volume", "action" to "mute") }
+            Key("Monter", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeUp) { connection.send("volume", "action" to "up") }
+        }
+        SectionLabel("Lecture")
+        MediaControls(remote.media, enabled) { connection.send("media_control", "action" to it) }
+        Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = Hairline, thickness = 1.dp)
+        NavigationRow("Écran", Icons.Outlined.Monitor) { onNavigate(Screen.PREVIEW) }
+        NavigationRow("Raccourcis", Icons.Outlined.GridView) { onNavigate(Screen.SHORTCUTS) }
+        val hasGames = remote.raspyTv && remote.games.isNotEmpty()
+        val tiles = if (showGames && hasGames) remote.games else remote.apps
+        if (hasGames) {
+            Spacer(Modifier.height(22.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Key("Applications", true, Modifier.weight(1f), active = !showGames) { showGames = false }
+                Key("Jeux", true, Modifier.weight(1f), active = showGames) { showGames = true }
             }
-        }
+            Spacer(Modifier.height(10.dp))
+        } else if (tiles.isNotEmpty()) SectionLabel("Applications")
+        TileGrid(tiles, enabled) { tile -> connection.send(if (showGames && hasGames) "launch_game" else "launch_app", "id" to tile.id) }
     }
 }
 
 @Composable
-private fun RemoteTileGrid(tiles: List<RemoteTile>, enabled: Boolean, onClick: (RemoteTile) -> Unit) {
+private fun MediaControls(media: MediaInfo, enabled: Boolean, onControl: (String) -> Unit) {
+    Text(if (media.available) media.title else "Aucune lecture", color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    if (media.available && media.artist.isNotBlank()) Text(media.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    if (media.duration > 0) LinearProgressIndicator(
+        progress = { (media.position.toFloat() / media.duration).coerceIn(0f, 1f) },
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).height(1.dp), color = Color.White, trackColor = Hairline, drawStopIndicator = {}, gapSize = 0.dp
+    )
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Key("Précédent", enabled, Modifier.weight(1f), icon = Icons.Outlined.SkipPrevious) { onControl("previous") }
+        Key(if (media.playing) "Pause" else "Lecture", enabled, Modifier.weight(1f), icon = if (media.playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow) { onControl("play_pause") }
+        Key("Suivant", enabled, Modifier.weight(1f), icon = Icons.Outlined.SkipNext) { onControl("next") }
+    }
+}
+
+@Composable
+private fun TileGrid(tiles: List<RemoteTile>, enabled: Boolean, onClick: (RemoteTile) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        tiles.chunked(3).forEach { row ->
+        tiles.chunked(4).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { tile ->
-                    Surface(
-                        Modifier.weight(1f).height(82.dp).clickable(enabled = enabled) { onClick(tile) },
-                        color = Panel, shape = MainShape, border = androidx.compose.foundation.BorderStroke(.5.dp, CardOutline)
+                    Column(
+                        Modifier.weight(1f).clip(KeyShape).clickable(enabled = enabled) { onClick(tile) }.padding(vertical = 12.dp, horizontal = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            if (tile.image.isBlank()) {
-                                AssetLogo(tileAsset(tile.id, tile.name), tile.name, Modifier.size(30.dp))
-                            } else {
-                                AsyncImage(model = tile.image, contentDescription = tile.name, modifier = Modifier.size(44.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
-                            }
-                            Spacer(Modifier.height(3.dp))
-                            Text(tile.name, color = if (enabled) ContentColor else Muted, fontSize = 9.sp, maxLines = 1)
+                        if (tile.image.isBlank()) {
+                            Image(painterResource(tileAsset(tile.id, tile.name)), tile.name, Modifier.size(30.dp), contentScale = ContentScale.Fit, colorFilter = GrayscaleFilter)
+                        } else {
+                            AsyncImage(model = tile.image, contentDescription = tile.name, modifier = Modifier.size(44.dp), contentScale = ContentScale.Fit)
                         }
+                        Spacer(Modifier.height(7.dp))
+                        Text(tile.name, color = if (enabled) Color.White else TextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
+// Appareils
+
 @Composable
-private fun QuickKeyboard(enabled: Boolean, onSend: (String) -> Unit, onKey: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    Column(Modifier.padding(top = 10.dp)) {
+private fun ColumnScope.DevicesScreen(devices: List<RemoteDevice>, onChange: (List<RemoteDevice>) -> Unit) {
+    var editing by remember { mutableStateOf<RemoteDevice?>(null) }
+    var adding by remember { mutableStateOf(devices.isEmpty()) }
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        devices.forEach { device ->
+            if (editing?.id == device.id) {
+                DeviceForm(device, "Enregistrer", onCancel = { editing = null }) { updated ->
+                    onChange(devices.map { if (it.id == device.id) updated else it })
+                    editing = null
+                }
+            } else {
+                Row(Modifier.fillMaxWidth().clickable { editing = device; adding = false }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(device.name, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${if (device.os == DeviceOs.WINDOWS) "Windows" else "Linux"} · ${device.host}:${device.port}", color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(onClick = { onChange(devices.filterNot { it.id == device.id }) }) {
+                        Icon(Icons.Outlined.Close, "Supprimer ${device.name}", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+            HorizontalDivider(color = Hairline, thickness = 1.dp)
+        }
+        Spacer(Modifier.height(14.dp))
+        if (adding) {
+            DeviceForm(null, "Ajouter", onCancel = { adding = false }.takeIf { devices.isNotEmpty() }) { created ->
+                onChange(devices + created)
+                adding = false
+            }
+        } else if (editing == null) {
+            Key("Ajouter un appareil", true, Modifier.fillMaxWidth()) { adding = true }
+        }
+    }
+}
+
+@Composable
+private fun DeviceForm(initial: RemoteDevice?, submitLabel: String, onCancel: (() -> Unit)?, onSubmit: (RemoteDevice) -> Unit) {
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var host by remember { mutableStateOf(initial?.host ?: "") }
+    var port by remember { mutableStateOf((initial?.port ?: 45870).toString()) }
+    var token by remember { mutableStateOf(initial?.token ?: "") }
+    var os by remember { mutableStateOf(initial?.os ?: DeviceOs.WINDOWS) }
+    val colors = monochromeFieldColors()
+    val valid = name.isNotBlank() && host.isNotBlank() && token.isNotBlank()
+    Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(name, { name = it }, label = { Text("Nom") }, singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(host, { host = it }, label = { Text("Adresse") }, singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(port, { port = it.filter(Char::isDigit) }, label = { Text("Port") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
-            value = text,
-            onValueChange = { updated ->
-                if (enabled) {
-                    var common = 0
-                    val limit = minOf(text.length, updated.length)
-                    while (common < limit && text[common] == updated[common]) common++
-                    repeat(text.length - common) { onKey("backspace") }
-                    if (common < updated.length) onSend(updated.substring(common))
-                }
-                text = updated
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = enabled,
-            singleLine = true,
-            label = { Text("Saisie directe") },
-            placeholder = { Text("Chaque caractère est envoyé au PC") },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { if (enabled) onKey("enter") }),
-            trailingIcon = {
-                TextButton(onClick = { if (enabled) onKey("backspace") }, enabled = enabled) {
-                    Icon(Icons.Outlined.Backspace, "Effacer", tint = Accent)
-                }
-            },
-            supportingText = { Text("Effacer supprime aussi le texte déjà présent sur l’appareil distant") },
-            shape = RoundedCornerShape(16.dp)
+            token, { token = it.trim() }, label = { Text("Code d’accès") }, singleLine = true, shape = KeyShape, colors = colors,
+            supportingText = { Text("Dans le config.json de l’agent", color = TextSecondary) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth()
         )
-        Row(Modifier.padding(top = 7.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("enter" to "Entrée", "escape" to "Échap.", "backspace" to "Effacer distant", "delete" to "Suppr.").forEach { (key, label) -> AssistChip(onClick = { onKey(key) }, label = { Text(label) }, enabled = enabled) }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Key("Windows", true, Modifier.weight(1f), active = os == DeviceOs.WINDOWS) { os = DeviceOs.WINDOWS }
+            Key("Linux", true, Modifier.weight(1f), active = os == DeviceOs.LINUX) { os = DeviceOs.LINUX }
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (onCancel != null) Key("Annuler", true, Modifier.weight(1f), onClick = onCancel)
+            Key(submitLabel, valid, Modifier.weight(1f)) {
+                val base = initial ?: RemoteDevice(name = name, host = host)
+                onSubmit(base.copy(name = name.trim(), host = host.trim(), port = port.toIntOrNull() ?: 45870, token = token, os = os))
+            }
         }
     }
-}
-
-@Composable
-private fun DeviceManager(
-    devices: List<RemoteDevice>, theme: AppVisualTheme, onThemeChange: (AppVisualTheme) -> Unit,
-    onDismiss: () -> Unit, onSave: (List<RemoteDevice>) -> Unit
-) {
-    var draft by remember { mutableStateOf(devices) }; var adding by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }; var host by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("45870") }; var token by remember { mutableStateOf("telecomhand") }
-    var os by remember { mutableStateOf(DeviceOs.WINDOWS) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Mes appareils") }, text = {
-        Column(Modifier.heightIn(max = 530.dp).verticalScroll(rememberScrollState())) {
-            draft.forEach { device ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(device.name, fontWeight = FontWeight.SemiBold); Text("${device.host}:${device.port}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
-                    AssistChip(
-                        onClick = { draft = draft.map { if (it.id == device.id) it.copy(os = if (it.os == DeviceOs.WINDOWS) DeviceOs.LINUX else DeviceOs.WINDOWS) else it } },
-                        label = { Text(if (device.os == DeviceOs.WINDOWS) "Windows" else "Linux", fontSize = 10.sp) }
-                    )
-                    TextButton(onClick = { draft = draft.filterNot { it.id == device.id } }) { Text("Supprimer") }
-                }
-            }
-            if (adding) {
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                OutlinedTextField(name, { name = it }, label = { Text("Nom") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(7.dp)); OutlinedTextField(host, { host = it }, label = { Text("Adresse IP ou nom réseau") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(7.dp)); Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    OutlinedTextField(port, { port = it.filter(Char::isDigit) }, label = { Text("Port") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(.7f))
-                    OutlinedTextField(token, { token = it }, label = { Text("Code") }, singleLine = true, modifier = Modifier.weight(1.3f))
-                }
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = os == DeviceOs.WINDOWS, onClick = { os = DeviceOs.WINDOWS }, label = { Text("Windows") }, leadingIcon = { AssetLogo(R.drawable.logo_windows, "Windows", Modifier.size(16.dp)) }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = os == DeviceOs.LINUX, onClick = { os = DeviceOs.LINUX }, label = { Text("Linux") }, leadingIcon = { AssetLogo(R.drawable.logo_linux, "Linux", Modifier.size(16.dp)) }, modifier = Modifier.weight(1f))
-                }
-                Button(onClick = { if (name.isNotBlank() && host.isNotBlank()) { draft = draft + RemoteDevice(name = name.trim(), host = host.trim(), port = port.toIntOrNull() ?: 45870, token = token, os = os); name = ""; host = ""; port = "45870"; os = DeviceOs.WINDOWS; adding = false } }, modifier = Modifier.padding(top = 10.dp).fillMaxWidth()) { Text("Ajouter cet appareil") }
-            } else TextButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) { Text("＋ Ajouter un appareil") }
-            HorizontalDivider(Modifier.padding(vertical = 10.dp))
-            Text("Thème de l’interface", fontWeight = FontWeight.Bold)
-            Text("Choisissez un style sans modifier les commandes.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            AppVisualTheme.entries.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    row.forEach { option ->
-                        FilterChip(
-                            selected = theme == option,
-                            onClick = { onThemeChange(option) },
-                            label = { Text(option.label, fontSize = 11.sp, maxLines = 1) },
-                            leadingIcon = { Box(Modifier.size(10.dp).background(paletteFor(option).accent, CircleShape)) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }, confirmButton = { Button(onClick = { onSave(draft) }) { Text("Enregistrer") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } })
 }
 
 private class DeviceStore(context: Context) {
@@ -1042,10 +1085,6 @@ private class DeviceStore(context: Context) {
         }
     }.getOrElse { emptyList() }
     fun selectedId(): String? = prefs.getString("selected", null)
-    fun loadTheme(): AppVisualTheme = runCatching {
-        AppVisualTheme.valueOf(prefs.getString("theme", AppVisualTheme.CLASSIC.name) ?: AppVisualTheme.CLASSIC.name)
-    }.getOrDefault(AppVisualTheme.CLASSIC)
-    fun saveTheme(theme: AppVisualTheme) { prefs.edit().putString("theme", theme.name).apply() }
     fun select(id: String) = prefs.edit().putString("selected", id).apply()
     fun save(devices: List<RemoteDevice>, selected: String?) {
         val array = JSONArray(); devices.forEach { array.put(JSONObject().put("id", it.id).put("name", it.name).put("host", it.host).put("port", it.port).put("token", it.token).put("os", it.os.name)) }

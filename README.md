@@ -23,6 +23,7 @@ Autres captures : [pavé tactile](docs/images/trackpad.png), [clavier](docs/imag
 ## Fonctions
 
 - Contrôle du pointeur et saisie clavier depuis Android.
+- Rail de défilement à vitesse progressive et traînée du doigt (v1.9, source).
 - Aperçu d'écran et commandes système selon l'agent installé.
 - Connexion par réseau privé, par exemple Tailscale.
 

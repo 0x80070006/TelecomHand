@@ -604,16 +604,10 @@ def start_windows_tray(control, preview):
     if sys.platform != "win32":
         return None
     import pystray
-    from PIL import Image, ImageDraw
+    from PIL import Image
 
-    image = Image.new("RGBA", (64, 64), (7, 12, 24, 255))
-    draw = ImageDraw.Draw(image)
-    blue = (47, 168, 255, 255)
-    cyan = (30, 225, 236, 255)
-    draw.rounded_rectangle((2, 2, 61, 61), radius=15, fill=(7, 12, 24, 255), outline=(64, 92, 150, 255), width=2)
-    draw.arc((10, 8, 48, 46), 196, 355, fill=blue, width=5)
-    draw.arc((17, 15, 42, 40), 196, 355, fill=cyan, width=5)
-    draw.polygon(((27, 25), (51, 42), (38, 45), (45, 57), (37, 61), (30, 48), (21, 58)), fill=cyan)
+    assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "assets"
+    image = Image.open(assets / "telecomhand.png")
 
     def restart(_icon, _item):
         LOG.info("Restart requested from tray")
