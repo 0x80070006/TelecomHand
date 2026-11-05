@@ -11,8 +11,8 @@ chmod +x install.sh
 ./install.sh
 ```
 
-L’installateur affiche l’adresse IP à saisir dans l’application mobile. Gardez
-les valeurs par défaut : port `45870` et code `telecomhand`.
+L’installateur affiche l’adresse IP à saisir dans l’application mobile. Gardez le port `45870`. Le code d'accès est créé au premier démarrage dans
+`~/.local/share/telecomhand/config.json` : saisissez-le dans l'application.
 
 Si Tailscale est installé, le client affiche également son adresse `100.x`, à
 utiliser de préférence depuis le téléphone.
