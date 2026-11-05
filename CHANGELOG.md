@@ -2,6 +2,25 @@
 
 Toutes les évolutions notables de TelecomHand sont consignées dans ce fichier.
 
+## v1.9 — 5 novembre 2026
+
+### Ajouté
+
+- Rail de défilement à côté du pavé tactile : lent près du centre, rapide en bout de course, retour automatique au relâchement.
+- Traînée du doigt en ruban lissé, qui s'affine et s'estompe progressivement.
+- Modification d'un appareil existant, dont son code d'accès.
+
+### Modifié
+
+- Interface noir et blanc épurée ; la page principale ne garde que le pavé, le rail et quatre boutons.
+- Boutons d'action aux couleurs bleu, rouge, vert et rose.
+- Volume, lecture, aperçu d'écran et raccourcis regroupés dans « Plus ».
+- Icône de l'agent Windows (zone de notification et exécutables) et icône de l'app alignées sur le logo de l'APK.
+
+### Retiré
+
+- Thèmes de couleur et leurs images.
+
 ## v1.7 — 25 septembre 2026
 
 ### Ajouté

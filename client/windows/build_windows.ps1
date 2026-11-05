@@ -10,6 +10,8 @@ python -m venv $Venv
 & "$Venv\Scripts\python.exe" -m pip install pyinstaller pyautogui pillow pystray winrt-runtime winrt-Windows.Foundation winrt-Windows.Foundation.Collections winrt-Windows.System winrt-Windows.Storage winrt-Windows.Storage.Streams winrt-Windows.Storage.Search winrt-Windows.Storage.Provider winrt-Windows.Storage.FileProperties winrt-Windows.Media.Control
 & "$Venv\Scripts\pyinstaller.exe" --noconfirm --clean --onefile --noconsole `
   --name TelecomHand-Windows `
+  --icon "$SourceRoot\assets\telecomhand.ico" `
+  --add-data "$SourceRoot\assets\telecomhand.png;assets" `
   --distpath "$PSScriptRoot\dist" `
   --workpath "$BuildRoot\work" `
   --specpath "$BuildRoot" `

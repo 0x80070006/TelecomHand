@@ -5,26 +5,32 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF4CD8FF),
-    secondary = Color(0xFF7967FF),
-    tertiary = Color(0xFF50E3A4),
-    background = Color(0xFF070B13),
-    surface = Color(0xFF111824),
-    surfaceVariant = Color(0xFF1B2638),
-    onPrimary = Color(0xFF001F29),
-    onBackground = Color(0xFFF3F7FF),
-    onSurface = Color(0xFFF3F7FF),
-    onSurfaceVariant = Color(0xFF91A1B7)
+private val MonochromeScheme = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color.White,
+    onPrimaryContainer = Color.Black,
+    secondary = Color.White,
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF1C1C1C),
+    onSecondaryContainer = Color.White,
+    tertiary = Color.White,
+    onTertiary = Color.Black,
+    background = Color.Black,
+    onBackground = Color.White,
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF141414),
+    onSurfaceVariant = Color(0xFF8C8C8C),
+    surfaceContainer = Color(0xFF141414),
+    surfaceContainerLow = Color(0xFF0E0E0E),
+    surfaceContainerHigh = Color(0xFF1A1A1A),
+    surfaceContainerHighest = Color(0xFF1F1F1F),
+    outline = Color(0xFF3A3A3A),
+    outlineVariant = Color(0xFF242424)
 )
 
 @Composable
-fun TelecomHandTheme(
-    content: @Composable () -> Unit
-) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = Typography,
-        content = content
-    )
+fun TelecomHandTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = MonochromeScheme, typography = Typography, content = content)
 }

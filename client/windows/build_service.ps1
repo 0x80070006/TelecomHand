@@ -11,6 +11,7 @@ python -m venv $Venv
 & "$Venv\Scripts\python.exe" -m pip install pyinstaller pywin32
 & "$Venv\Scripts\pyinstaller.exe" --noconfirm --clean --onefile `
   --name TelecomHand-Service `
+  --icon "$SourceRoot\assets\telecomhand.ico" `
   --hidden-import win32timezone `
   --distpath "$PSScriptRoot\dist" `
   --workpath "$BuildRoot\work" `
