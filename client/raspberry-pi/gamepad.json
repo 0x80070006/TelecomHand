@@ -1,0 +1,98 @@
+{
+  "game_processes": [
+    "moonlight-qt"
+  ],
+  "panel": {
+    "button": "ps",
+    "hold_seconds": 1.0,
+    "idle_seconds": 20
+  },
+  "deadzone": 0.15,
+  "mouse_speed": 900,
+  "scroll_speed": 12,
+  "repeat_delay": 0.4,
+  "repeat_interval": 0.15,
+  "pointer_timeout": 8,
+  "buttons": {
+    "dpad_up": {
+      "key": "KEY_UP"
+    },
+    "dpad_down": {
+      "key": "KEY_DOWN"
+    },
+    "dpad_left": {
+      "key": "KEY_LEFT"
+    },
+    "dpad_right": {
+      "key": "KEY_RIGHT"
+    },
+    "cross": {
+      "confirm": {
+        "key": "KEY_ENTER",
+        "mouse": "left"
+      }
+    },
+    "circle": {
+      "raspytv": {
+        "action": "tv-back"
+      }
+    },
+    "square": {
+      "raspytv": {
+        "action": "tv-play-pause"
+      }
+    },
+    "triangle": {
+      "raspytv": {
+        "action": "tv-context"
+      }
+    },
+    "ps": {
+      "raspytv": {
+        "action": "tv-home"
+      }
+    },
+    "share": {
+      "raspytv": {
+        "action": "tv-nav-peek"
+      }
+    },
+    "options": {
+      "raspytv": {
+        "action": "tv-settings"
+      }
+    },
+    "l1": {
+      "raspytv": {
+        "action": "volume",
+        "delta": -4
+      },
+      "repeat": true
+    },
+    "r1": {
+      "raspytv": {
+        "action": "volume",
+        "delta": 4
+      },
+      "repeat": true
+    },
+    "l2": {
+      "raspytv": {
+        "action": "media",
+        "op": "previous"
+      }
+    },
+    "r2": {
+      "raspytv": {
+        "action": "media",
+        "op": "next"
+      }
+    },
+    "l3": {
+      "mouse": "left"
+    },
+    "r3": {
+      "mouse": "right"
+    }
+  }
+}

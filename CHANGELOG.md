@@ -2,6 +2,30 @@
 
 Toutes les évolutions notables de TelecomHand sont consignées dans ce fichier.
 
+## v1.10 — 11 novembre 2026
+
+### Ajouté
+
+- Mode RaspyTV, activé tout seul quand l'app se connecte à un Raspberry Pi qui fait tourner RaspyTV :
+  - croix directionnelle avec bouton OK, répétition quand une direction reste appuyée, retour haptique ;
+  - Retour, Accueil, barre latérale, Options (△), Panneau (PS) et Réglages de RaspyTV ;
+  - lecture en cours avec jaquette, barre de lecture déplaçable, précédent, lecture/pause et suivant ;
+  - volume réglé par RaspyTV (l'indicateur s'affiche sur la TV), jauge à glisser, toucher pour couper le son ;
+  - choix de la sortie audio, dont la connexion d'un casque Bluetooth jumelé ;
+  - applications RaspyTV à leurs couleurs et jeux Moonlight avec leur jaquette ;
+  - batterie de la manette DualShock 4 ;
+  - redémarrage et extinction du Pi, avec confirmation en deux temps ;
+  - onglets Télécommande, Souris et Clavier.
+- Agent Raspberry Pi en protocole 5 : commandes `tv`, `tv_media`, `tv_volume`, `system_power` et pages `/tv-state.json`, `/tv-art`, `/app-icon`.
+- Service `telecomhand-gamepad` : la manette DualShock 4 comme télécommande (voir LISEZ-MOI du Raspberry Pi).
+- Confirmation avant de supprimer un appareil ; code d'accès masquable.
+
+### Modifié
+
+- Interface plus chaleureuse : fond encre, cartes arrondies, icônes Material arrondies, logos en couleur.
+- Pavé tactile dans une carte, avec un rappel des gestes.
+- En-tête avec le logo du système et un point d'état coloré.
+
 ## v1.9 — 5 novembre 2026
 
 ### Ajouté

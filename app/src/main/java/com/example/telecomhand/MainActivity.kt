@@ -15,13 +15,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,10 +39,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Backspace
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,8 +56,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -68,20 +69,16 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.telecomhand.ui.theme.ActionBlue
-import com.example.telecomhand.ui.theme.ActionGreen
-import com.example.telecomhand.ui.theme.ActionPink
-import com.example.telecomhand.ui.theme.ActionRed
-import com.example.telecomhand.ui.theme.Hairline
-import com.example.telecomhand.ui.theme.TelecomHandTheme
-import com.example.telecomhand.ui.theme.TextSecondary
+import com.example.telecomhand.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -106,14 +103,8 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sign
 
-private val KeyShape = RoundedCornerShape(10.dp)
-// Niveaux de gris éclaircis : un logo sombre (Netflix, Twitch) reste lisible sur fond noir.
-private val GrayscaleFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
-    setToSaturation(0f)
-    this[0, 4] = 95f
-    this[1, 4] = 95f
-    this[2, 4] = 95f
-})
+internal val KeyShape = RoundedCornerShape(14.dp)
+internal val CardShape = RoundedCornerShape(22.dp)
 
 data class RemoteDevice(
     val id: String = UUID.randomUUID().toString(),
@@ -126,23 +117,23 @@ data class RemoteDevice(
 
 enum class DeviceOs { WINDOWS, LINUX }
 
-private data class AudioOutput(val id: String, val name: String, val active: Boolean)
+internal data class AudioOutput(val id: String, val name: String, val active: Boolean)
 
 enum class ConnectionState { OFFLINE, CONNECTING, CONNECTED }
-private enum class Screen { HOME, KEYBOARD, MORE, SHORTCUTS, PREVIEW, SETTINGS }
-private data class RemoteTile(val id: String, val name: String, val image: String = "")
-private data class MediaInfo(val available: Boolean = false, val title: String = "", val artist: String = "", val playing: Boolean = false, val position: Int = 0, val duration: Int = 0)
-private data class RemoteState(val raspyTv: Boolean = false, val apps: List<RemoteTile> = emptyList(), val games: List<RemoteTile> = emptyList(), val media: MediaInfo = MediaInfo())
+internal enum class Screen { HOME, KEYBOARD, MORE, SHORTCUTS, PREVIEW, SETTINGS }
+internal data class RemoteTile(val id: String, val name: String, val image: String = "")
+internal data class MediaInfo(val available: Boolean = false, val title: String = "", val artist: String = "", val playing: Boolean = false, val position: Int = 0, val duration: Int = 0)
+internal data class RemoteState(val raspyTv: Boolean = false, val apps: List<RemoteTile> = emptyList(), val games: List<RemoteTile> = emptyList(), val media: MediaInfo = MediaInfo())
 
 @DrawableRes
-private fun tileAsset(id: String, name: String = ""): Int = when {
+internal fun tileAsset(id: String, name: String = ""): Int? = when {
     id == "jellyfin" && name.equals("Lumo", true) -> R.drawable.logo_lumo
     id == "browser" -> R.drawable.logo_browser
     id == "terminal" -> R.drawable.logo_terminal
     id == "explorer" -> R.drawable.logo_explorer
     id == "mail" -> R.drawable.logo_mail
     id == "notes" -> R.drawable.logo_notes
-    id == "youtube" -> R.drawable.logo_youtube
+    id == "youtube" || id == "youtube-music" -> R.drawable.logo_youtube
     id == "spotify" -> R.drawable.logo_spotify
     id == "netflix" -> R.drawable.logo_netflix
     id == "twitch" -> R.drawable.logo_twitch
@@ -150,7 +141,8 @@ private fun tileAsset(id: String, name: String = ""): Int = when {
     id == "immich" -> R.drawable.logo_immich
     id == "homelab" -> R.drawable.logo_dashy
     id == "lumo" -> R.drawable.logo_lumo
-    else -> R.drawable.logo_moonlight
+    id == "moonlight" -> R.drawable.logo_moonlight
+    else -> null
 }
 
 class MainActivity : ComponentActivity() {
@@ -170,11 +162,13 @@ private fun TelecomHandApp() {
     val store = remember { DeviceStore(context) }
     var devices by remember { mutableStateOf(store.load()) }
     var selectedId by remember { mutableStateOf(store.selectedId()) }
-    var screen by remember { mutableStateOf(Screen.HOME) }
+    var screen by remember { mutableStateOf(if (devices.isEmpty()) Screen.SETTINGS else Screen.HOME) }
     val selected = devices.firstOrNull { it.id == selectedId } ?: devices.firstOrNull()
     val connection = remember { RemoteConnection() }
     var connectionState by remember { mutableStateOf(ConnectionState.OFFLINE) }
     var remoteState by remember { mutableStateOf(RemoteState()) }
+    var tvState by remember { mutableStateOf(TvState()) }
+    var tvRefresh by remember { mutableIntStateOf(0) }
     val connected = connectionState == ConnectionState.CONNECTED
 
     DisposableEffect(selected) {
@@ -200,7 +194,26 @@ private fun TelecomHandApp() {
         }
         while (isActive) {
             remoteState = withContext(Dispatchers.IO) { connection.fetchRemoteState(selected) }
-            delay(if (screen == Screen.MORE) 2500 else 8000)
+            delay(if (screen == Screen.MORE) 2500 else 15000)
+        }
+    }
+    // Détection de RaspyTV : seul l'agent Linux du Raspberry Pi répond à /tv-state.json.
+    LaunchedEffect(selected?.id, connected, screen, tvRefresh) {
+        if (selected == null || !connected || selected.os != DeviceOs.LINUX) {
+            if (!connected && connectionState != ConnectionState.CONNECTING) tvState = TvState()
+            if (selected?.os != DeviceOs.LINUX) tvState = TvState()
+            return@LaunchedEffect
+        }
+        if (tvRefresh > 0) delay(500)
+        while (isActive) {
+            val next = withContext(Dispatchers.IO) { connection.fetchTvState(selected) }
+            // Une requête perdue ne fait pas quitter le mode RaspyTV.
+            if (next != null) tvState = next
+            delay(when {
+                !tvState.raspyTv -> 12000
+                screen == Screen.HOME -> 2000
+                else -> 6000
+            })
         }
     }
 
@@ -209,27 +222,38 @@ private fun TelecomHandApp() {
     }
     BackHandler(enabled = screen != Screen.HOME) { back() }
 
-    Surface(Modifier.fillMaxSize(), color = Color.Black) {
+    Surface(Modifier.fillMaxSize(), color = Ink) {
         AnimatedContent(
             targetState = screen,
-            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(110)) },
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
             label = "screen",
             modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
         ) { current ->
             when (current) {
-                Screen.HOME -> HomeScreen(
-                    selected, devices, connectionState, connection,
-                    onSelect = { selectedId = it.id; store.select(it.id) },
-                    onNavigate = { screen = it }
-                )
-                Screen.KEYBOARD -> SubScreen("Clavier", ::back) { KeyboardScreen(connected, connection) }
-                Screen.MORE -> SubScreen("Plus", ::back) {
+                Screen.HOME -> if (tvState.raspyTv && selected != null) {
+                    RaspyTvHome(
+                        device = selected, devices = devices, state = connectionState, connection = connection,
+                        tv = tvState, games = remoteState.games,
+                        onLocalChange = { tvState = it },
+                        onRefresh = { tvRefresh++ },
+                        onSelect = { selectedId = it.id; store.select(it.id) },
+                        onNavigate = { screen = it }
+                    )
+                } else {
+                    HomeScreen(
+                        selected, devices, connectionState, connection,
+                        onSelect = { selectedId = it.id; store.select(it.id) },
+                        onNavigate = { screen = it }
+                    )
+                }
+                Screen.KEYBOARD -> SubScreen("Clavier", "Ce que vous tapez s’écrit sur l’écran", ::back) { KeyboardScreen(connected, connection) }
+                Screen.MORE -> SubScreen("Plus", selected?.name, ::back) {
                     MoreScreen(connection, connected, remoteState) { screen = it }
                 }
-                Screen.SHORTCUTS -> SubScreen("Raccourcis", ::back) { ShortcutsScreen(selected, connection, connected, remoteState) }
-                Screen.PREVIEW -> SubScreen("Écran", ::back) { ScreenPreview(selected, connection) }
-                Screen.SETTINGS -> SubScreen("Appareils", ::back) {
-                    DevicesScreen(devices) { updated ->
+                Screen.SHORTCUTS -> SubScreen("Raccourcis", selected?.name, ::back) { ShortcutsScreen(selected, connection, connected) }
+                Screen.PREVIEW -> SubScreen("Écran", "Aperçu en direct", ::back) { ScreenPreview(selected, connection) }
+                Screen.SETTINGS -> SubScreen("Appareils", "Les ordinateurs et TV que vous pilotez", ::back) {
+                    DevicesScreen(devices, selectedId) { updated ->
                         devices = updated
                         if (selectedId !in updated.map { it.id }) selectedId = updated.firstOrNull()?.id
                         store.save(updated, selectedId)
@@ -240,7 +264,7 @@ private fun TelecomHandApp() {
     }
 }
 
-// Accueil
+// Accueil classique (Windows, Linux sans RaspyTV)
 
 @Composable
 private fun HomeScreen(
@@ -249,8 +273,27 @@ private fun HomeScreen(
 ) {
     val connected = state == ConnectionState.CONNECTED
     Column(Modifier.fillMaxSize()) {
-        HomeHeader(selected, devices, state, onSelect) { onNavigate(Screen.SETTINGS) }
-        Row(Modifier.weight(1f).fillMaxWidth()) {
+        DeviceHeader(selected, devices, state, null, onSelect, onSettings = { onNavigate(Screen.SETTINGS) })
+        MousePad(connection, selected, connected, Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            ActionButton("Clic gauche", ActionBlue, connected, onClick = { connection.send("click", "button" to "left") }) { MouseGlyph(left = true, ActionBlue) }
+            ActionButton("Clic droit", ActionRed, connected, onClick = { connection.send("click", "button" to "right") }) { MouseGlyph(left = false, ActionRed) }
+            ActionButton("Clavier", ActionGreen, true, onClick = { onNavigate(Screen.KEYBOARD) }) { ActionIcon(Icons.Rounded.Keyboard, ActionGreen) }
+            ActionButton("Plus", ActionPink, true, onClick = { onNavigate(Screen.MORE) }) { ActionIcon(Icons.Rounded.Apps, ActionPink) }
+        }
+    }
+}
+
+/** Pavé tactile et rail de défilement, dans une carte, avec un rappel des gestes. */
+@Composable
+internal fun MousePad(connection: RemoteConnection, selected: RemoteDevice?, connected: Boolean, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Row(
+            Modifier.weight(1f).fillMaxWidth().clip(CardShape).background(Surface1).border(1.dp, Hairline, CardShape)
+        ) {
             TouchSurface(connection, selected == null, Modifier.weight(1f).fillMaxHeight())
             ScrollRail(
                 enabled = connected,
@@ -259,79 +302,108 @@ private fun HomeScreen(
                 modifier = Modifier.width(44.dp).fillMaxHeight()
             )
         }
-        Row(
-            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            ActionButton("Gauche", ActionBlue, connected, onClick = { connection.send("click", "button" to "left") }) { MouseGlyph(left = true, ActionBlue) }
-            ActionButton("Droit", ActionRed, connected, onClick = { connection.send("click", "button" to "right") }) { MouseGlyph(left = false, ActionRed) }
-            ActionButton("Clavier", ActionGreen, true, onClick = { onNavigate(Screen.KEYBOARD) }) { ActionIcon(Icons.Outlined.Keyboard, ActionGreen) }
-            ActionButton("Plus", ActionPink, true, onClick = { onNavigate(Screen.MORE) }) { ActionIcon(Icons.Outlined.MoreHoriz, ActionPink) }
-        }
+        Text(
+            "Glisser : déplacer  ·  Toucher : cliquer  ·  Maintenir : saisir  ·  Deux doigts : défiler",
+            color = TextMuted, fontSize = 11.sp, maxLines = 2,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp, end = 4.dp)
+        )
     }
 }
 
 @Composable
-private fun HomeHeader(
-    selected: RemoteDevice?, devices: List<RemoteDevice>, state: ConnectionState,
-    onSelect: (RemoteDevice) -> Unit, onSettings: () -> Unit
+internal fun DeviceHeader(
+    selected: RemoteDevice?, devices: List<RemoteDevice>, state: ConnectionState, badge: String?,
+    onSelect: (RemoteDevice) -> Unit, onSettings: () -> Unit,
+    trailing: @Composable RowScope.() -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().height(56.dp).padding(start = 8.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 8.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
             Row(
-                Modifier.clip(KeyShape).clickable { if (devices.isEmpty()) onSettings() else expanded = true }
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                Modifier.clip(RoundedCornerShape(18.dp)).clickable { if (devices.isEmpty()) onSettings() else expanded = true }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatusDot(state)
-                Spacer(Modifier.width(10.dp))
-                Text(selected?.name ?: "Aucun appareil", color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp))
-                if (state != ConnectionState.CONNECTED && selected != null) {
+                DeviceAvatar(selected, state)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            selected?.name ?: "Aucun appareil", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 170.dp)
+                        )
+                        if (devices.size > 1) Icon(Icons.Rounded.ExpandMore, "Changer d’appareil", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                     Text(
-                        if (state == ConnectionState.CONNECTING) "  connexion" else "  hors ligne",
-                        color = TextSecondary, fontSize = 13.sp, maxLines = 1
+                        when {
+                            selected == null -> "Touchez pour en ajouter un"
+                            state == ConnectionState.CONNECTING -> "Connexion…"
+                            state == ConnectionState.OFFLINE -> "Hors ligne"
+                            badge != null -> badge
+                            else -> "Connecté"
+                        },
+                        color = when {
+                            state == ConnectionState.CONNECTED && badge != null -> Raspberry
+                            state == ConnectionState.CONNECTED -> ActionGreen
+                            else -> TextSecondary
+                        },
+                        fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1
                     )
                 }
             }
-            DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Color(0xFF141414), shape = KeyShape) {
+            DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Surface2, shape = KeyShape) {
                 devices.forEach { device ->
                     DropdownMenuItem(
-                        text = { Text(device.name, color = Color.White) },
-                        trailingIcon = { if (device.id == selected?.id) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+                        text = { Text(device.name, color = TextPrimary) },
+                        leadingIcon = { Image(painterResource(osLogo(device.os)), null, Modifier.size(20.dp)) },
+                        trailingIcon = { if (device.id == selected?.id) Icon(Icons.Rounded.Check, null, tint = Raspberry, modifier = Modifier.size(18.dp)) },
                         onClick = { expanded = false; onSelect(device) }
                     )
                 }
             }
         }
+        trailing()
         IconButton(onClick = onSettings) {
-            Icon(Icons.Outlined.Settings, "Appareils", tint = Color.White, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Settings, "Appareils", tint = TextSecondary, modifier = Modifier.size(22.dp))
         }
     }
 }
 
+@DrawableRes
+private fun osLogo(os: DeviceOs) = if (os == DeviceOs.WINDOWS) R.drawable.logo_windows else R.drawable.logo_linux
+
+/** Logo du système dans une pastille, avec un point d'état en bas à droite. */
 @Composable
-private fun StatusDot(state: ConnectionState) {
-    val shape = CircleShape
-    val modifier = Modifier.size(7.dp)
-    when (state) {
-        ConnectionState.CONNECTED -> Box(modifier.background(Color.White, shape))
-        ConnectionState.CONNECTING -> Box(modifier.background(TextSecondary, shape))
-        ConnectionState.OFFLINE -> Box(modifier.border(1.dp, TextSecondary, shape))
+private fun DeviceAvatar(device: RemoteDevice?, state: ConnectionState) {
+    val dot by animateColorAsState(
+        when (state) {
+            ConnectionState.CONNECTED -> ActionGreen
+            ConnectionState.CONNECTING -> Amber
+            ConnectionState.OFFLINE -> TextMuted
+        }, label = "dot"
+    )
+    Box(Modifier.size(40.dp)) {
+        Box(Modifier.fillMaxSize().clip(CircleShape).background(Surface2), contentAlignment = Alignment.Center) {
+            if (device != null) Image(painterResource(osLogo(device.os)), null, Modifier.size(22.dp))
+            else Icon(Icons.Rounded.Add, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+        }
+        if (device != null) Box(
+            Modifier.align(Alignment.BottomEnd).size(13.dp).clip(CircleShape).background(Ink).padding(2.5.dp).clip(CircleShape).background(dot)
+        )
     }
 }
 
 @Composable
-private fun ActionButton(label: String, color: Color, enabled: Boolean, onClick: () -> Unit, glyph: @Composable () -> Unit) {
+internal fun ActionButton(label: String, color: Color, enabled: Boolean, onClick: () -> Unit, glyph: @Composable () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val alpha = if (enabled) 1f else .3f
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val alpha = if (enabled) 1f else .35f
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
         Box(
-            Modifier.size(58.dp).graphicsLayer { this.alpha = alpha }.clip(CircleShape)
-                .background(if (pressed) color.copy(alpha = .22f) else Color.Black)
-                .border(1.5.dp, color, CircleShape)
-                .clickable(source, null, enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label, onClick = onClick),
+            Modifier.size(60.dp).graphicsLayer { scaleX = if (pressed) .94f else 1f; scaleY = scaleX }
+                .clip(RoundedCornerShape(20.dp))
+                .background(color.copy(alpha = if (pressed) .30f else .15f))
+                .clickable(source, null, enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
             contentAlignment = Alignment.Center
         ) { glyph() }
         Spacer(Modifier.height(7.dp))
@@ -341,14 +413,14 @@ private fun ActionButton(label: String, color: Color, enabled: Boolean, onClick:
 
 @Composable
 private fun ActionIcon(icon: ImageVector, color: Color) {
-    Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+    Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
 }
 
 /** Souris dont seul le bouton concerné est plein : gauche et droit se distinguent sans texte. */
 @Composable
-private fun MouseGlyph(left: Boolean, color: Color) {
+internal fun MouseGlyph(left: Boolean, color: Color) {
     Canvas(Modifier.size(width = 16.dp, height = 24.dp)) {
-        val stroke = 1.5.dp.toPx()
+        val stroke = 1.6.dp.toPx()
         val radius = CornerRadius(size.width / 2f, size.width / 2f)
         val half = size.width / 2f
         val split = size.height * .42f
@@ -423,10 +495,10 @@ private fun catmullRom(p0: Offset, p1: Offset, p2: Offset, p3: Offset, t: Float)
 }
 
 /**
- * Ruban lissé qui s'affine et s'éteint avec l'âge. Tracé en niveaux de gris opaques avec le mode
+ * Ruban lissé qui s'affine et s'éteint avec l'âge. Tracé du fond vers la couleur d'accent, en mode
  * Lighten : les segments se recouvrent sans former de perles aux jointures.
  */
-private fun DrawScope.drawTrail(trail: FingerTrail, now: Long) {
+private fun DrawScope.drawTrail(trail: FingerTrail, now: Long, background: Color, accent: Color) {
     val maxWidth = 9.dp.toPx()
     val step = 3.dp.toPx()
     val head = trail.head
@@ -436,7 +508,7 @@ private fun DrawScope.drawTrail(trail: FingerTrail, now: Long) {
         val life = 1f - (now - time) / TrailLifetimeMs
         if (life <= 0f) return null
         val level = life.pow(1.8f)
-        return Color(level, level, level) to maxWidth * (.12f + .88f * life.pow(1.3f))
+        return androidx.compose.ui.graphics.lerp(background, accent, level) to maxWidth * (.12f + .88f * life.pow(1.3f))
     }
 
     points.forEachIndexed { index, point ->
@@ -463,10 +535,12 @@ private fun DrawScope.drawTrail(trail: FingerTrail, now: Long) {
     }
 
     if (head != null) {
-        drawCircle(Color.White, maxWidth * .55f, head)
-        if (trail.held) drawCircle(Color.White, 20.dp.toPx(), head, style = Stroke(1.dp.toPx()))
+        drawCircle(accent, maxWidth * .55f, head)
+        if (trail.held) drawCircle(accent, 20.dp.toPx(), head, style = Stroke(1.5.dp.toPx()))
     }
 }
+
+private val TrailAccent = Color(0xFFDCE6FF)
 
 @Composable
 private fun TouchSurface(connection: RemoteConnection, noDevice: Boolean, modifier: Modifier = Modifier) {
@@ -563,10 +637,11 @@ private fun TouchSurface(connection: RemoteConnection, noDevice: Boolean, modifi
     ) {
         Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
             trail.frame // relit le dessin à chaque image de l'animation
-            drawRect(Color.Black)
-            drawTrail(trail, SystemClock.uptimeMillis())
+            drawRect(Surface1)
+            drawTrail(trail, SystemClock.uptimeMillis(), Surface1, TrailAccent)
         }
         if (noDevice) Text("Ajoutez un appareil", color = TextSecondary, fontSize = 13.sp)
+        else if (trail.head == null && !trail.animating) Icon(Icons.Rounded.TouchApp, null, tint = Surface3, modifier = Modifier.size(56.dp))
     }
 }
 
@@ -637,16 +712,17 @@ private fun ScrollRail(enabled: Boolean, os: DeviceOs, onScroll: (Int) -> Unit, 
             }
         }
     ) {
+        drawLine(Hairline, Offset(0f, 0f), Offset(0f, size.height), 1.dp.toPx())
         val x = size.width / 2f
         val middle = size.height / 2f
         val travel = size.height * RailTravelRatio
         val thumbY = middle + thumb.value * travel
         val thumbHalf = 22.dp.toPx()
-        drawLine(Hairline, Offset(x, middle - travel - thumbHalf), Offset(x, middle + travel + thumbHalf), 1.dp.toPx(), StrokeCap.Round)
-        if (abs(thumbY - middle) > 1f) drawLine(Color.White.copy(alpha = .55f), Offset(x, middle), Offset(x, thumbY), 1.dp.toPx())
-        val width = (if (held) 6.dp else 4.dp).toPx()
+        drawLine(Surface3, Offset(x, middle - travel - thumbHalf), Offset(x, middle + travel + thumbHalf), 2.dp.toPx(), StrokeCap.Round)
+        if (abs(thumbY - middle) > 1f) drawLine(ActionBlue.copy(alpha = .6f), Offset(x, middle), Offset(x, thumbY), 2.dp.toPx(), StrokeCap.Round)
+        val width = (if (held) 8.dp else 6.dp).toPx()
         drawRoundRect(
-            if (enabled) Color.White else Color(0xFF4A4A4A),
+            if (!enabled) Surface3 else if (held) ActionBlue else TextSecondary,
             topLeft = Offset(x - width / 2f, thumbY - thumbHalf),
             size = Size(width, thumbHalf * 2f),
             cornerRadius = CornerRadius(width / 2f, width / 2f)
@@ -659,59 +735,75 @@ private const val RailTravelRatio = .42f
 // Écrans secondaires
 
 @Composable
-private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+private fun SubScreen(title: String, subtitle: String?, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(56.dp).padding(start = 6.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Retour", tint = Color.White, modifier = Modifier.size(22.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 16.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(42.dp).clip(CircleShape).background(Surface2).clickable(onClickLabel = "Retour", onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Retour", tint = TextPrimary, modifier = Modifier.size(21.dp)) }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text(title, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                if (!subtitle.isNullOrBlank()) Text(subtitle, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.width(4.dp))
-            Text(title, color = Color.White, fontSize = 17.sp)
         }
         Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp), content = content)
     }
 }
 
 @Composable
-private fun SectionLabel(label: String) {
-    Text(label, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 22.dp, bottom = 9.dp))
+internal fun SectionLabel(label: String, modifier: Modifier = Modifier) {
+    Text(label, color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = modifier.padding(top = 22.dp, bottom = 10.dp))
 }
 
-/** Touche sobre : contour fin, s'inverse en blanc à l'appui ou lorsqu'elle est active. */
+/** Touche pleine aux coins arrondis ; prend la couleur d'accent lorsqu'elle est active. */
 @Composable
-private fun Key(label: String, enabled: Boolean, modifier: Modifier = Modifier, active: Boolean = false, icon: ImageVector? = null, onClick: () -> Unit) {
+internal fun Key(
+    label: String, enabled: Boolean, modifier: Modifier = Modifier, active: Boolean = false, icon: ImageVector? = null,
+    accent: Color = Raspberry, onClick: () -> Unit
+) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val inverted = active || pressed
+    val background by animateColorAsState(
+        when {
+            active -> accent.copy(alpha = .22f)
+            pressed -> Surface3
+            else -> Surface2
+        }, tween(120), label = "key"
+    )
     val content = when {
-        inverted -> Color.Black
-        enabled -> Color.White
-        else -> Color(0xFF555555)
+        active -> accent
+        enabled -> TextPrimary
+        else -> TextMuted
     }
     Box(
-        modifier.height(46.dp).clip(KeyShape)
-            .background(if (inverted) Color.White else Color.Black)
-            .border(1.dp, if (inverted) Color.White else Hairline, KeyShape)
-            .clickable(source, null, enabled = enabled, onClick = onClick),
+        modifier.height(48.dp).clip(KeyShape).background(background)
+            .then(if (active) Modifier.border(1.dp, accent.copy(alpha = .5f), KeyShape) else Modifier)
+            .clickable(source, null, enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (icon != null) Icon(icon, label, tint = content, modifier = Modifier.size(20.dp))
-        else Text(label, color = content, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp))
+        if (icon != null) Icon(icon, label, tint = content, modifier = Modifier.size(22.dp))
+        else Text(label, color = content, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 6.dp))
     }
 }
 
 @Composable
-private fun NavigationRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun NavigationRow(label: String, detail: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(52.dp).clickable(onClick = onClick),
+        Modifier.fillMaxWidth().clip(CardShape).background(Surface1).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(color.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(21.dp))
+        }
         Spacer(Modifier.width(14.dp))
-        Text(label, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(detail, color = TextSecondary, fontSize = 12.sp)
+        }
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = TextMuted, modifier = Modifier.size(22.dp))
     }
-    HorizontalDivider(color = Hairline, thickness = 1.dp)
 }
 
 @Composable
@@ -725,10 +817,14 @@ private fun ScreenPreview(device: RemoteDevice?, connection: RemoteConnection) {
             delay(350)
         }
     }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(bottom = 16.dp).clip(CardShape).background(Surface1), contentAlignment = Alignment.Center) {
         val image = frame
         if (image != null) Image(image, "Écran distant", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-        else Text(error ?: "Chargement de l’écran…", color = TextSecondary, fontSize = 13.sp)
+        else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Rounded.Monitor, null, tint = TextMuted, modifier = Modifier.size(40.dp))
+            Spacer(Modifier.height(10.dp))
+            Text(error ?: "Chargement de l’écran…", color = TextSecondary, fontSize = 13.sp)
+        }
     }
 }
 
@@ -747,23 +843,14 @@ private fun LinuxAudioOutputPicker(device: RemoteDevice, connection: RemoteConne
     val active = outputs.firstOrNull { it.active }
 
     Box {
-        Row(
-            Modifier.fillMaxWidth().height(58.dp).clickable(enabled = enabled && !loading) { expanded = true },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Outlined.Speaker, null, tint = Color.White, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Sortie audio", color = Color.White, fontSize = 14.sp)
-                Text(if (loading) "Recherche…" else active?.name ?: "Choisir un périphérique", color = TextSecondary, fontSize = 12.sp, maxLines = 1)
-            }
-            Icon(Icons.Outlined.ExpandMore, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+        NavigationRow("Sortie audio", if (loading) "Recherche…" else active?.name ?: "Choisir un périphérique", Icons.Rounded.Speaker, Lagoon) {
+            if (enabled && !loading) expanded = true
         }
-        DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Color(0xFF141414), shape = KeyShape) {
+        DropdownMenu(expanded, onDismissRequest = { expanded = false }, containerColor = Surface2, shape = KeyShape) {
             outputs.forEach { output ->
                 DropdownMenuItem(
-                    text = { Text(output.name, color = Color.White) },
-                    trailingIcon = { if (output.active) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+                    text = { Text(output.name, color = TextPrimary) },
+                    trailingIcon = { if (output.active) Icon(Icons.Rounded.Check, null, tint = Lagoon, modifier = Modifier.size(18.dp)) },
                     onClick = {
                         expanded = false
                         outputs = outputs.map { it.copy(active = it.id == output.id) }
@@ -774,11 +861,10 @@ private fun LinuxAudioOutputPicker(device: RemoteDevice, connection: RemoteConne
             if (outputs.isEmpty() && !loading) DropdownMenuItem(text = { Text("Aucune sortie détectée", color = TextSecondary) }, onClick = {})
         }
     }
-    HorizontalDivider(color = Hairline, thickness = 1.dp)
 }
 
 @Composable
-private fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConnection) {
+internal fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConnection) {
     var text by remember { mutableStateOf("") }
     OutlinedTextField(
         value = text,
@@ -793,22 +879,23 @@ private fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConne
             text = updated
         },
         modifier = Modifier.fillMaxWidth(), enabled = enabled, singleLine = true,
-        placeholder = { Text("Écrire…", color = TextSecondary) },
+        placeholder = { Text("Écrire…", color = TextMuted) },
+        leadingIcon = { Icon(Icons.Rounded.Keyboard, null, tint = TextSecondary) },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { connection.send("key", "value" to "enter") }),
         trailingIcon = {
             IconButton(onClick = { connection.send("key", "value" to "backspace") }, enabled = enabled) {
-                Icon(Icons.AutoMirrored.Outlined.Backspace, "Effacer", tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Rounded.Backspace, "Effacer", tint = TextPrimary, modifier = Modifier.size(20.dp))
             }
         },
         shape = KeyShape,
-        colors = monochromeFieldColors()
+        colors = fieldColors()
     )
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
         SectionLabel("Navigation")
         KeyRows(enabled, connection, listOf(
             listOf("home" to "Origine", "end" to "Fin", "pageup" to "Pg préc", "pagedown" to "Pg suiv"),
-            listOf("left" to "Gauche", "up" to "Haut", "down" to "Bas", "right" to "Droite")
+            listOf("left" to "←", "up" to "↑", "down" to "↓", "right" to "→")
         ))
         SectionLabel("Système")
         KeyRows(enabled, connection, listOf(
@@ -821,22 +908,26 @@ private fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConne
 }
 
 @Composable
-private fun monochromeFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Color.White,
+internal fun fieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Raspberry,
     unfocusedBorderColor = Hairline,
     disabledBorderColor = Hairline,
-    cursorColor = Color.White,
-    focusedLabelColor = Color.White,
+    focusedContainerColor = Surface1,
+    unfocusedContainerColor = Surface1,
+    disabledContainerColor = Surface1,
+    cursorColor = Raspberry,
+    focusedLabelColor = Raspberry,
     unfocusedLabelColor = TextSecondary,
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary,
+    focusedLeadingIconColor = Raspberry
 )
 
 @Composable
 private fun KeyRows(enabled: Boolean, connection: RemoteConnection, rows: List<List<Pair<String, String>>>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (key, label) ->
                     Key(label, enabled, Modifier.weight(1f)) { connection.send("key", "value" to key) }
                 }
@@ -866,18 +957,18 @@ private fun WindowsShortcuts(connection: RemoteConnection, enabled: Boolean, dev
         releaseModifiers()
         connection.send("hotkey", "keys" to JSONArray(keys.toList()))
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Key("Démarrer", enabled, Modifier.weight(1f)) { hotkey("win") }
-            Key("Ctrl", enabled, Modifier.weight(1f), active = ctrlHeld) {
+            Key("Ctrl", enabled, Modifier.weight(1f), active = ctrlHeld, accent = ActionBlue) {
                 val next = !ctrlHeld; ctrlHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "ctrl")
             }
-            Key("Alt", enabled, Modifier.weight(1f), active = altHeld) {
+            Key("Alt", enabled, Modifier.weight(1f), active = altHeld, accent = ActionBlue) {
                 val next = !altHeld; altHeld = next; connection.send(if (next) "key_down" else "key_up", "value" to "alt")
             }
-            Key("Verrouiller", enabled && connection.supportsScreenLock, Modifier.weight(1f)) { releaseModifiers(); connection.send("lock_screen") }
+            Key("Verrouiller", enabled && connection.supportsScreenLock, Modifier.weight(1f), icon = Icons.Rounded.Lock) { releaseModifiers(); connection.send("lock_screen") }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Key("Changer", enabled, Modifier.weight(1f)) { hotkey("alt", "tab") }
             Key("Bureau", enabled, Modifier.weight(1f)) { hotkey("win", "d") }
             Key("Fichiers", enabled, Modifier.weight(1f)) { hotkey("win", "e") }
@@ -891,7 +982,7 @@ private fun WindowsShortcuts(connection: RemoteConnection, enabled: Boolean, dev
 }
 
 @Composable
-private fun ColumnScope.ShortcutsScreen(device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean, remote: RemoteState) {
+private fun ColumnScope.ShortcutsScreen(device: RemoteDevice?, connection: RemoteConnection, enabled: Boolean) {
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
         when (device?.os) {
             DeviceOs.WINDOWS -> {
@@ -903,7 +994,10 @@ private fun ColumnScope.ShortcutsScreen(device: RemoteDevice?, connection: Remot
                     listOf(listOf("ctrl", "z") to "Annuler", listOf("ctrl", "a") to "Tout", listOf("ctrl", "shift", "escape") to "Tâches")
                 ))
             }
-            DeviceOs.LINUX -> LinuxAudioOutputPicker(device, connection, enabled)
+            DeviceOs.LINUX -> {
+                Spacer(Modifier.height(12.dp))
+                LinuxAudioOutputPicker(device, connection, enabled)
+            }
             null -> Text("Ajoutez un appareil.", color = TextSecondary, fontSize = 13.sp)
         }
     }
@@ -911,9 +1005,9 @@ private fun ColumnScope.ShortcutsScreen(device: RemoteDevice?, connection: Remot
 
 @Composable
 private fun ShortcutRows(connection: RemoteConnection, enabled: Boolean, rows: List<List<Pair<List<String>, String>>>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (keys, label) ->
                     Key(label, enabled, Modifier.weight(1f)) { connection.send("hotkey", "keys" to JSONArray(keys)) }
                 }
@@ -927,24 +1021,25 @@ private fun ColumnScope.MoreScreen(connection: RemoteConnection, enabled: Boolea
     var showGames by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
         SectionLabel("Volume")
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Key("Baisser", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeDown) { connection.send("volume", "action" to "down") }
-            Key("Muet", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeOff) { connection.send("volume", "action" to "mute") }
-            Key("Monter", enabled, Modifier.weight(1f), icon = Icons.Outlined.VolumeUp) { connection.send("volume", "action" to "up") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Key("Baisser", enabled, Modifier.weight(1f), icon = Icons.AutoMirrored.Rounded.VolumeDown) { connection.send("volume", "action" to "down") }
+            Key("Muet", enabled, Modifier.weight(1f), icon = Icons.AutoMirrored.Rounded.VolumeOff) { connection.send("volume", "action" to "mute") }
+            Key("Monter", enabled, Modifier.weight(1f), icon = Icons.AutoMirrored.Rounded.VolumeUp) { connection.send("volume", "action" to "up") }
         }
         SectionLabel("Lecture")
         MediaControls(remote.media, enabled) { connection.send("media_control", "action" to it) }
-        Spacer(Modifier.height(12.dp))
-        HorizontalDivider(color = Hairline, thickness = 1.dp)
-        NavigationRow("Écran", Icons.Outlined.Monitor) { onNavigate(Screen.PREVIEW) }
-        NavigationRow("Raccourcis", Icons.Outlined.GridView) { onNavigate(Screen.SHORTCUTS) }
+        Spacer(Modifier.height(20.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            NavigationRow("Écran", "Voir l’écran distant en direct", Icons.Rounded.Monitor, ActionBlue) { onNavigate(Screen.PREVIEW) }
+            NavigationRow("Raccourcis", "Combinaisons de touches, sortie audio", Icons.Rounded.GridView, ActionGreen) { onNavigate(Screen.SHORTCUTS) }
+        }
         val hasGames = remote.raspyTv && remote.games.isNotEmpty()
         val tiles = if (showGames && hasGames) remote.games else remote.apps
         if (hasGames) {
             Spacer(Modifier.height(22.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Key("Applications", true, Modifier.weight(1f), active = !showGames) { showGames = false }
-                Key("Jeux", true, Modifier.weight(1f), active = showGames) { showGames = true }
+                Key("Jeux", true, Modifier.weight(1f), active = showGames, accent = Violet) { showGames = true }
             }
             Spacer(Modifier.height(10.dp))
         } else if (tiles.isNotEmpty()) SectionLabel("Applications")
@@ -954,37 +1049,48 @@ private fun ColumnScope.MoreScreen(connection: RemoteConnection, enabled: Boolea
 
 @Composable
 private fun MediaControls(media: MediaInfo, enabled: Boolean, onControl: (String) -> Unit) {
-    Text(if (media.available) media.title else "Aucune lecture", color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    if (media.available && media.artist.isNotBlank()) Text(media.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    if (media.duration > 0) LinearProgressIndicator(
-        progress = { (media.position.toFloat() / media.duration).coerceIn(0f, 1f) },
-        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).height(1.dp), color = Color.White, trackColor = Hairline, drawStopIndicator = {}, gapSize = 0.dp
-    )
-    Spacer(Modifier.height(10.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Key("Précédent", enabled, Modifier.weight(1f), icon = Icons.Outlined.SkipPrevious) { onControl("previous") }
-        Key(if (media.playing) "Pause" else "Lecture", enabled, Modifier.weight(1f), icon = if (media.playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow) { onControl("play_pause") }
-        Key("Suivant", enabled, Modifier.weight(1f), icon = Icons.Outlined.SkipNext) { onControl("next") }
+    Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface1).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(ActionPink.copy(alpha = .16f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MusicNote, null, tint = ActionPink, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (media.available) media.title.ifBlank { "Lecture en cours" } else "Aucune lecture", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (media.available && media.artist.isNotBlank()) Text(media.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (media.duration > 0) LinearProgressIndicator(
+            progress = { (media.position.toFloat() / media.duration).coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp).height(4.dp).clip(CircleShape), color = ActionPink, trackColor = Surface3, drawStopIndicator = {}, gapSize = 0.dp
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Key("Précédent", enabled, Modifier.weight(1f), icon = Icons.Rounded.SkipPrevious) { onControl("previous") }
+            Key(if (media.playing) "Pause" else "Lecture", enabled, Modifier.weight(1f), icon = if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow) { onControl("play_pause") }
+            Key("Suivant", enabled, Modifier.weight(1f), icon = Icons.Rounded.SkipNext) { onControl("next") }
+        }
     }
 }
 
 @Composable
 private fun TileGrid(tiles: List<RemoteTile>, enabled: Boolean, onClick: (RemoteTile) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tiles.chunked(4).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { tile ->
                     Column(
-                        Modifier.weight(1f).clip(KeyShape).clickable(enabled = enabled) { onClick(tile) }.padding(vertical = 12.dp, horizontal = 2.dp),
+                        Modifier.weight(1f).clip(KeyShape).background(Surface1).clickable(enabled = enabled) { onClick(tile) }.padding(vertical = 12.dp, horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (tile.image.isBlank()) {
-                            Image(painterResource(tileAsset(tile.id, tile.name)), tile.name, Modifier.size(30.dp), contentScale = ContentScale.Fit, colorFilter = GrayscaleFilter)
-                        } else {
-                            AsyncImage(model = tile.image, contentDescription = tile.name, modifier = Modifier.size(44.dp), contentScale = ContentScale.Fit)
+                        val asset = tileAsset(tile.id, tile.name)
+                        when {
+                            tile.image.isNotBlank() -> AsyncImage(model = tile.image, contentDescription = tile.name, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                            asset != null -> Image(painterResource(asset), tile.name, Modifier.size(32.dp), contentScale = ContentScale.Fit)
+                            else -> LetterBadge(tile.name, Violet, 32.dp)
                         }
-                        Spacer(Modifier.height(7.dp))
-                        Text(tile.name, color = if (enabled) Color.White else TextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(8.dp))
+                        Text(tile.name, color = if (enabled) TextPrimary else TextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -993,13 +1099,32 @@ private fun TileGrid(tiles: List<RemoteTile>, enabled: Boolean, onClick: (Remote
     }
 }
 
+/** Initiale sur fond coloré, pour une application sans logo connu. */
+@Composable
+internal fun LetterBadge(name: String, color: Color, size: androidx.compose.ui.unit.Dp) {
+    Box(Modifier.size(size).clip(RoundedCornerShape(size * .3f)).background(color.copy(alpha = .9f)), contentAlignment = Alignment.Center) {
+        Text(name.trim().take(1).uppercase(), color = Color.White, fontSize = (size.value * .48f).sp, fontWeight = FontWeight.Bold)
+    }
+}
+
 // Appareils
 
 @Composable
-private fun ColumnScope.DevicesScreen(devices: List<RemoteDevice>, onChange: (List<RemoteDevice>) -> Unit) {
+private fun ColumnScope.DevicesScreen(devices: List<RemoteDevice>, selectedId: String?, onChange: (List<RemoteDevice>) -> Unit) {
     var editing by remember { mutableStateOf<RemoteDevice?>(null) }
     var adding by remember { mutableStateOf(devices.isEmpty()) }
-    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+    var confirmDelete by remember { mutableStateOf<RemoteDevice?>(null) }
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (devices.isEmpty()) {
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface1).padding(18.dp)) {
+                Text("Bienvenue", color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Installez l’agent TelecomHand sur votre PC ou votre Raspberry Pi : il affiche son adresse IP et son code d’accès. Saisissez-les ci-dessous.",
+                    color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp
+                )
+            }
+        }
         devices.forEach { device ->
             if (editing?.id == device.id) {
                 DeviceForm(device, "Enregistrer", onCancel = { editing = null }) { updated ->
@@ -1007,27 +1132,55 @@ private fun ColumnScope.DevicesScreen(devices: List<RemoteDevice>, onChange: (Li
                     editing = null
                 }
             } else {
-                Row(Modifier.fillMaxWidth().clickable { editing = device; adding = false }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(device.name, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${if (device.os == DeviceOs.WINDOWS) "Windows" else "Linux"} · ${device.host}:${device.port}", color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(
+                    Modifier.fillMaxWidth().clip(CardShape).background(Surface1)
+                        .then(if (device.id == selectedId) Modifier.border(1.dp, Raspberry.copy(alpha = .45f), CardShape) else Modifier)
+                        .clickable { editing = device; adding = false }.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Surface2), contentAlignment = Alignment.Center) {
+                        Image(painterResource(osLogo(device.os)), null, Modifier.size(24.dp))
                     }
-                    IconButton(onClick = { onChange(devices.filterNot { it.id == device.id }) }) {
-                        Icon(Icons.Outlined.Close, "Supprimer ${device.name}", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(device.name, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${if (device.os == DeviceOs.WINDOWS) "Windows" else "Linux · Raspberry Pi"} · ${device.host}", color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Icon(Icons.Rounded.Edit, "Modifier ${device.name}", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    IconButton(onClick = { confirmDelete = device }) {
+                        Icon(Icons.Rounded.DeleteOutline, "Supprimer ${device.name}", tint = TextSecondary, modifier = Modifier.size(20.dp))
                     }
                 }
             }
-            HorizontalDivider(color = Hairline, thickness = 1.dp)
         }
-        Spacer(Modifier.height(14.dp))
         if (adding) {
             DeviceForm(null, "Ajouter", onCancel = { adding = false }.takeIf { devices.isNotEmpty() }) { created ->
                 onChange(devices + created)
                 adding = false
             }
         } else if (editing == null) {
-            Key("Ajouter un appareil", true, Modifier.fillMaxWidth()) { adding = true }
+            Button(
+                onClick = { adding = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = KeyShape,
+                colors = ButtonDefaults.buttonColors(containerColor = Raspberry, contentColor = Color.White)
+            ) {
+                Icon(Icons.Rounded.Add, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Ajouter un appareil", fontWeight = FontWeight.SemiBold)
+            }
         }
+    }
+    confirmDelete?.let { device ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            containerColor = Surface1,
+            icon = { Icon(Icons.Rounded.DeleteOutline, null, tint = Danger) },
+            title = { Text("Supprimer « ${device.name} » ?", color = TextPrimary) },
+            text = { Text("L’appareil et son code d’accès seront retirés de cette application.", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { onChange(devices.filterNot { it.id == device.id }); confirmDelete = null }) { Text("Supprimer", color = Danger) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Annuler", color = TextPrimary) } }
+        )
     }
 }
 
@@ -1037,31 +1190,61 @@ private fun DeviceForm(initial: RemoteDevice?, submitLabel: String, onCancel: ((
     var host by remember { mutableStateOf(initial?.host ?: "") }
     var port by remember { mutableStateOf((initial?.port ?: 45870).toString()) }
     var token by remember { mutableStateOf(initial?.token ?: "") }
-    var os by remember { mutableStateOf(initial?.os ?: DeviceOs.WINDOWS) }
-    val colors = monochromeFieldColors()
+    var os by remember { mutableStateOf(initial?.os ?: DeviceOs.LINUX) }
+    var showToken by remember { mutableStateOf(false) }
+    val colors = fieldColors()
     val valid = name.isNotBlank() && host.isNotBlank() && token.isNotBlank()
-    Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(name, { name = it }, label = { Text("Nom") }, singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(host, { host = it }, label = { Text("Adresse") }, singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(port, { port = it.filter(Char::isDigit) }, label = { Text("Port") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
+    Column(
+        Modifier.fillMaxWidth().clip(CardShape).background(Surface1).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(if (initial == null) "Nouvel appareil" else "Modifier l’appareil", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OsChoice("Raspberry Pi / Linux", R.drawable.logo_linux, os == DeviceOs.LINUX, Modifier.weight(1f)) { os = DeviceOs.LINUX }
+            OsChoice("Windows", R.drawable.logo_windows, os == DeviceOs.WINDOWS, Modifier.weight(1f)) { os = DeviceOs.WINDOWS }
+        }
+        OutlinedTextField(name, { name = it }, label = { Text("Nom") }, placeholder = { Text("Salon", color = TextMuted) }, singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(host, { host = it.trim() }, label = { Text("Adresse IP") }, placeholder = { Text("192.168.1.20", color = TextMuted) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.weight(1f))
+            OutlinedTextField(port, { port = it.filter(Char::isDigit).take(5) }, label = { Text("Port") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, shape = KeyShape, colors = colors, modifier = Modifier.width(96.dp))
+        }
         OutlinedTextField(
             token, { token = it.trim() }, label = { Text("Code d’accès") }, singleLine = true, shape = KeyShape, colors = colors,
-            supportingText = { Text("Dans le config.json de l’agent", color = TextSecondary) },
+            supportingText = { Text("Dans ~/.local/share/telecomhand/config.json (ou config.json de l’agent Windows)", color = TextMuted) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (showToken) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { showToken = !showToken }) {
+                    Icon(if (showToken) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (showToken) "Masquer" else "Afficher", tint = TextSecondary)
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Key("Windows", true, Modifier.weight(1f), active = os == DeviceOs.WINDOWS) { os = DeviceOs.WINDOWS }
-            Key("Linux", true, Modifier.weight(1f), active = os == DeviceOs.LINUX) { os = DeviceOs.LINUX }
-        }
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (onCancel != null) Key("Annuler", true, Modifier.weight(1f), onClick = onCancel)
-            Key(submitLabel, valid, Modifier.weight(1f)) {
-                val base = initial ?: RemoteDevice(name = name, host = host)
-                onSubmit(base.copy(name = name.trim(), host = host.trim(), port = port.toIntOrNull() ?: 45870, token = token, os = os))
-            }
+            Button(
+                onClick = {
+                    val base = initial ?: RemoteDevice(name = name, host = host)
+                    onSubmit(base.copy(name = name.trim(), host = host.trim(), port = port.toIntOrNull() ?: 45870, token = token, os = os))
+                },
+                enabled = valid, modifier = Modifier.weight(1f).height(48.dp), shape = KeyShape,
+                colors = ButtonDefaults.buttonColors(containerColor = Raspberry, contentColor = Color.White, disabledContainerColor = Surface2, disabledContentColor = TextMuted)
+            ) { Text(submitLabel, fontWeight = FontWeight.SemiBold) }
         }
+    }
+}
+
+@Composable
+private fun OsChoice(label: String, @DrawableRes logo: Int, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier.height(48.dp).clip(KeyShape).background(if (selected) Raspberry.copy(alpha = .16f) else Surface2)
+            .then(if (selected) Modifier.border(1.dp, Raspberry.copy(alpha = .55f), KeyShape) else Modifier)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center
+    ) {
+        Image(painterResource(logo), null, Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = if (selected) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1092,7 +1275,7 @@ private class DeviceStore(context: Context) {
     }
 }
 
-private class RemoteConnection {
+internal class RemoteConnection {
     private val connector = Executors.newSingleThreadExecutor()
     private val sender = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -1103,6 +1286,8 @@ private class RemoteConnection {
     @Volatile private var stateCallback: ((ConnectionState) -> Unit)? = null
     @Volatile private var protocolVersion: Int = 0
     val supportsScreenLock get() = protocolVersion >= 3
+    /** Commandes tv, tv_media, tv_volume et system_power : agent du Raspberry Pi en protocole 5. */
+    val supportsRaspyTv get() = protocolVersion >= 5
 
     fun connect(target: RemoteDevice, onState: (ConnectionState) -> Unit) {
         val attempt = generation.incrementAndGet()
@@ -1142,7 +1327,7 @@ private class RemoteConnection {
                     socket = next
                     writer = nextWriter
                     protocolVersion = negotiatedVersion
-                    Log.i("TelecomHand", "Client distant authentifié")
+                    Log.i("TelecomHand", "Client distant authentifié (protocole $negotiatedVersion)")
                     publish(ConnectionState.CONNECTED)
                     return@execute
                 } catch (error: Exception) {
@@ -1204,19 +1389,24 @@ private class RemoteConnection {
             }
         }
     }
+
+    private fun httpBase(target: RemoteDevice) = "http://${target.host}:${target.port + 1}"
+    private fun encodedToken(target: RemoteDevice) = java.net.URLEncoder.encode(target.token, "UTF-8")
+
+    private fun getText(url: String, readTimeoutMs: Int): String {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 1800; readTimeout = readTimeoutMs; useCaches = false }
+        return try { connection.inputStream.bufferedReader().use { it.readText() } } finally { connection.disconnect() }
+    }
+
     fun fetchFrame(target: RemoteDevice): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
-        val url = URL("http://${target.host}:${target.port + 1}/screen.jpg?token=${java.net.URLEncoder.encode(target.token, "UTF-8")}")
+        val url = URL("${httpBase(target)}/screen.jpg?token=${encodedToken(target)}")
         val connection = (url.openConnection() as HttpURLConnection).apply { connectTimeout = 1400; readTimeout = 2500; useCaches = false }
         try { connection.inputStream.use { BitmapFactory.decodeStream(it)?.asImageBitmap() } }
         finally { connection.disconnect() }
     }.getOrNull()
 
     fun fetchAudioOutputs(target: RemoteDevice): List<AudioOutput> = runCatching {
-        val url = URL("http://${target.host}:${target.port + 1}/audio-outputs.json?token=${java.net.URLEncoder.encode(target.token, "UTF-8")}")
-        val connection = (url.openConnection() as HttpURLConnection).apply { connectTimeout = 1800; readTimeout = 3000; useCaches = false }
-        val body = try { connection.inputStream.bufferedReader().use { it.readText() } }
-        finally { connection.disconnect() }
-        val array = JSONObject(body).getJSONArray("outputs")
+        val array = JSONObject(getText("${httpBase(target)}/audio-outputs.json?token=${encodedToken(target)}", 3000)).getJSONArray("outputs")
         List(array.length()) { index ->
             array.getJSONObject(index).let { AudioOutput(it.getString("id"), it.getString("name"), it.optBoolean("active")) }
         }.also { Log.i("TelecomHand", "${it.size} sortie(s) audio détectée(s)") }
@@ -1226,20 +1416,13 @@ private class RemoteConnection {
     }
 
     fun fetchRemoteState(target: RemoteDevice): RemoteState = runCatching {
-        val encodedToken = java.net.URLEncoder.encode(target.token, "UTF-8")
-        val connection = (URL("http://${target.host}:${target.port + 1}/remote-state.json?token=$encodedToken").openConnection() as HttpURLConnection).apply {
-            connectTimeout = 1800; readTimeout = 4500; useCaches = false
-        }
-        val body = try { connection.inputStream.bufferedReader().use { it.readText() } }
-        finally { connection.disconnect() }
-        val root = JSONObject(body)
+        val token = encodedToken(target)
+        val root = JSONObject(getText("${httpBase(target)}/remote-state.json?token=$token", 4500))
         fun tiles(name: String): List<RemoteTile> {
             val array = root.optJSONArray(name) ?: return emptyList()
             return List(array.length()) { index -> array.getJSONObject(index).let { item ->
                 val id = item.optString("id")
-                val image = if (item.optBoolean("hasImage")) {
-                    "http://${target.host}:${target.port + 1}/game-image?token=$encodedToken&id=${Uri.encode(id)}"
-                } else ""
+                val image = if (item.optBoolean("hasImage")) "${httpBase(target)}/game-image?token=$token&id=${Uri.encode(id)}" else ""
                 RemoteTile(id, item.optString("name"), image)
             } }
                 .filter { it.id.isNotBlank() && it.name.isNotBlank() }
@@ -1252,5 +1435,16 @@ private class RemoteConnection {
     }.getOrElse { error ->
         Log.d("TelecomHand", "État distant indisponible: ${error.message}")
         RemoteState()
+    }
+
+    /** État RaspyTV, ou null si la requête échoue (le dernier état connu reste affiché). */
+    fun fetchTvState(target: RemoteDevice): TvState? = runCatching {
+        val token = encodedToken(target)
+        val root = JSONObject(getText("${httpBase(target)}/tv-state.json?token=$token", 4500))
+        parseTvState(root, httpBase(target), token)
+    }.getOrElse { error ->
+        Log.d("TelecomHand", "État RaspyTV indisponible: ${error.message}")
+        // 404 : agent antérieur au protocole 5, sans mode RaspyTV.
+        if (error is java.io.FileNotFoundException) TvState() else null
     }
 }

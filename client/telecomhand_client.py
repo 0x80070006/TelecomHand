@@ -17,6 +17,7 @@ import socketserver
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -30,6 +31,61 @@ except ImportError:
 
 LOG = logging.getLogger("telecomhand")
 KEYS = {"enter", "escape", "backspace", "tab", "space", "delete", "up", "down", "left", "right", "home", "end", "pageup", "pagedown", "capslock", *(f"f{i}" for i in range(1, 13))}
+PROTOCOL_VERSION = 5
+
+# Télécommande RaspyTV (protocole 5) : les mêmes commandes que la manette.
+TV_ACTIONS = {"home", "back", "settings", "nav-peek", "panel", "play-pause", "context"}
+TV_MEDIA_OPS = {"toggle", "next", "previous", "seek"}
+RASPYTV_DATA = Path.home() / ".config" / "raspy-tv"
+ICON_ROOTS = (Path.home() / "MediaHub", RASPYTV_DATA / "icons")
+RASTER_ICONS = {".png", ".jpg", ".jpeg", ".webp"}
+IMAGE_SIGNATURES = ((b"\xff\xd8\xff", "image/jpeg"), (b"\x89PNG", "image/png"), (b"RIFF", "image/webp"))
+
+
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _read_json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _inside(path: Path, roots) -> bool:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    return any(resolved.is_relative_to(root.resolve()) for root in roots)
+
+
+def _image_file(path: Path, limit: int):
+    """Image locale servie à l'app : taille bornée, type reconnu à sa signature, pas à son nom."""
+    try:
+        if not path.is_file() or path.stat().st_size > limit:
+            return None
+        data = path.read_bytes()
+    except OSError:
+        return None
+    for signature, content_type in IMAGE_SIGNATURES:
+        if data.startswith(signature):
+            return data, content_type
+    return None
+
+
+def _controller_battery():
+    for folder in sorted(Path("/sys/class/power_supply").glob("ps-controller-battery-*")):
+        try:
+            return int(folder.joinpath("capacity").read_text().strip()), folder.joinpath("status").read_text().strip()
+        except (OSError, ValueError):
+            continue
+    return None, ""
 
 
 class PyAutoGuiBackend:
@@ -269,7 +325,7 @@ class WaylandBackend:
         subprocess.run(["playerctl", command], check=True, timeout=3, env=self.environment)
 
     def launch_app(self, app_id: str) -> None:
-        allowed = {"lumo", "jellyfin", "jellyfin-web", "youtube", "spotify", "twitch", "netflix", "homelab", "immich"}
+        allowed = {"lumo", "jellyfin", "jellyfin-web", "youtube", "youtube-music", "twitch", "homelab", "immich"}
         if app_id not in allowed:
             raise ValueError("unknown RaspyTV application")
         self._raspytv_command({"action": "launch", "id": app_id})
@@ -285,14 +341,18 @@ class WaylandBackend:
     def launcher_state(self) -> dict:
         is_raspytv = self._raspytv_socket() is not None
         apps = [
-            {"id": "jellyfin", "name": "Lumo"}, {"id": "youtube", "name": "YouTube"},
-            {"id": "spotify", "name": "Spotify"}, {"id": "twitch", "name": "Twitch"},
-            {"id": "netflix", "name": "Netflix"}, {"id": "homelab", "name": "Dashboard"},
+            {"id": "jellyfin", "name": "Lumo"}, {"id": "youtube", "name": "NouTube"},
+            {"id": "youtube-music", "name": "NouTube Music"}, {"id": "twitch", "name": "Twitch"},
+            {"id": "homelab", "name": "Dashboard"},
             {"id": "immich", "name": "Immich"},
         ] if is_raspytv else []
         games = []
         self.game_images = {}
-        if is_raspytv:
+        cached = getattr(self, "_moonlight_cache", None)
+        # moonlight-qt lance tout un processus Qt : la liste des jeux est gardée 10 minutes.
+        if is_raspytv and cached and time.monotonic() - cached[0] < 600:
+            games, self.game_images = list(cached[1]), dict(cached[2])
+        elif is_raspytv:
             try:
                 moonlight_host = os.environ.get("TELECOMHAND_MOONLIGHT_HOST", "").strip()
                 if not moonlight_host:
@@ -309,6 +369,8 @@ class WaylandBackend:
                     games.append({"id": row[0], "name": row[0], "hasImage": has_image})
             except Exception:
                 games = []
+            if games:
+                self._moonlight_cache = (time.monotonic(), list(games), dict(self.game_images))
             if not games:
                 games = [{"id": "__moonlight__", "name": "Moonlight", "hasImage": False}]
         return {"raspyTv": is_raspytv, "apps": apps, "games": games}
@@ -343,6 +405,84 @@ class WaylandBackend:
         self.mouse.write(self.e.EV_KEY, code, 0)
         self.mouse.syn()
 
+    # --- Télécommande RaspyTV : chaque action est relayée au socket de RaspyTV.
+
+    def tv_command(self, action: str) -> None:
+        if action not in TV_ACTIONS:
+            raise ValueError("unknown RaspyTV action")
+        self._raspytv_command({"action": f"tv-{action}"})
+
+    def tv_media(self, op: str, value: float = 0) -> None:
+        if op not in TV_MEDIA_OPS:
+            raise ValueError("unknown media action")
+        self._raspytv_command({"action": "media", "op": op, "value": max(0.0, float(value))})
+
+    def tv_volume(self, delta: int | None = None, value: int | None = None) -> None:
+        # Par RaspyTV plutôt que par une touche : l'indicateur de volume s'affiche sur la TV.
+        if value is not None:
+            self._raspytv_command({"action": "volume-set", "value": max(0, min(100, int(value)))})
+        elif delta is not None:
+            self._raspytv_command({"action": "volume", "delta": max(-20, min(20, int(delta)))})
+
+    def system_power(self, op: str) -> None:
+        if op not in {"reboot", "poweroff"}:
+            raise ValueError("unknown power action")
+        LOG.warning("Alimentation demandée depuis l'app : %s", op)
+        subprocess.run(["sudo", "-n", "/usr/bin/systemctl", op], check=True, timeout=10, capture_output=True)
+
+    def tv_state(self) -> dict:
+        """Lecture en cours, volume, sorties audio, apps et manette, tels que RaspyTV les voit."""
+        if self._raspytv_socket() is None:
+            return {"raspyTv": False}
+        panel_path = RASPYTV_DATA / "panel-state.json"
+        before = _mtime(panel_path)
+        try:
+            self._raspytv_command({"action": "tv-state"})
+            deadline = time.monotonic() + 1.5
+            while time.monotonic() < deadline and _mtime(panel_path) <= before:
+                time.sleep(0.05)
+        except (OSError, ValueError):
+            pass  # Un RaspyTV plus ancien ne connaît pas tv-state : on sert le dernier état connu.
+        nav = _read_json(RASPYTV_DATA / "nav-state.json")
+        panel = _read_json(RASPYTV_DATA / "panel-state.json")
+        self.app_icons = {}
+        apps = []
+        for app in nav.get("apps") or []:
+            app_id, icon = str(app.get("id", "")), str(app.get("icon") or "")
+            if not app_id:
+                continue
+            usable = Path(icon).suffix.lower() in RASTER_ICONS and _inside(Path(icon), ICON_ROOTS)
+            if usable:
+                self.app_icons[app_id] = icon
+            apps.append({"id": app_id, "name": str(app.get("name", app_id)), "native": bool(app.get("native")),
+                         "color": str(app.get("color") or ""), "hasIcon": usable})
+        media = panel.get("media") or None
+        self.tv_artwork = str(media.get("artwork") or "") if media else ""
+        audio = panel.get("audio") or {}
+        capacity, status = _controller_battery()
+        return {
+            "raspyTv": True,
+            "activeId": nav.get("activeId"),
+            "inGame": bool(nav.get("nativeMode")),
+            "volume": audio.get("volume", nav.get("systemVolume")),
+            "muted": bool(audio.get("muted", nav.get("systemMuted"))),
+            "apps": apps,
+            "media": {key: media.get(key) for key in ("title", "artist", "app", "position", "duration", "playing")} | {"hasArtwork": bool(self.tv_artwork)} if media else None,
+            "outputs": [{key: output.get(key) for key in ("id", "name", "kind", "headset", "active")} for output in audio.get("outputs") or []],
+            "bluetooth": [{"id": device.get("id"), "name": device.get("name")} for device in audio.get("bluetooth") or []],
+            "controller": {"battery": capacity, "status": status} if capacity is not None else None,
+        }
+
+    def tv_artwork_image(self):
+        path = Path(getattr(self, "tv_artwork", "") or "")
+        if not path.name.startswith("panel-art-") or path.parent != RASPYTV_DATA:
+            return None
+        return _image_file(path, 3_000_000)
+
+    def app_icon(self, app_id: str):
+        icon = getattr(self, "app_icons", {}).get(app_id)
+        return _image_file(Path(icon), 1_000_000) if icon else None
+
     def audio_outputs(self) -> list[dict]:
         result = subprocess.run(
             ["pactl", "--format=json", "list", "sinks"],
@@ -363,6 +503,10 @@ class WaylandBackend:
         return outputs
 
     def set_audio_output(self, output_id: str) -> None:
+        if self._raspytv_socket() is not None and len(output_id) <= 300:
+            # RaspyTV sait aussi connecter un casque Bluetooth jumelé (identifiant « bt:… »).
+            self._raspytv_command({"action": "audio-output", "id": output_id})
+            return
         known = {item["id"] for item in self.audio_outputs()}
         if output_id not in known:
             raise ValueError("unknown audio output")
@@ -435,6 +579,19 @@ class State:
                 self.backend.launch_app(str(command.get("id", "")))
             elif kind == "launch_game":
                 self.backend.launch_game(str(command.get("id", "")))
+            elif kind in {"tv", "tv_media", "tv_volume", "system_power"}:
+                if not hasattr(self.backend, "tv_command"):
+                    raise ValueError("RaspyTV commands need the Raspberry Pi agent")
+                if kind == "tv":
+                    self.backend.tv_command(str(command.get("action", "")))
+                elif kind == "tv_media":
+                    self.backend.tv_media(str(command.get("op", "")), float(command.get("value", 0) or 0))
+                elif kind == "tv_volume":
+                    value = command.get("value")
+                    self.backend.tv_volume(delta=int(command["delta"]) if "delta" in command else None,
+                                           value=int(value) if value is not None else None)
+                else:
+                    self.backend.system_power(str(command.get("op", "")))
             elif kind == "ping":
                 pass
             elif kind != "hello":
@@ -453,7 +610,7 @@ class ControlHandler(socketserver.StreamRequestHandler):
                 command = json.loads(line.decode("utf-8"))
                 self.server.state.execute(command)
                 if command.get("type") == "hello":
-                    self.wfile.write(b'{"status":"ok","version":4}\n')
+                    self.wfile.write(json.dumps({"status": "ok", "version": PROTOCOL_VERSION}).encode("utf-8") + b"\n")
                     self.wfile.flush()
             except (ConnectionError, TimeoutError, socket.timeout):
                 return
@@ -501,10 +658,36 @@ class PreviewHandler(BaseHTTPRequestHandler):
         if parsed.path == "/remote-state.json":
             try:
                 launcher = self.server.state.backend.launcher_state()
-                self.send_json({**launcher, "media": self.server.state.backend.media_state(), "protocol": 4})
+                self.send_json({**launcher, "media": self.server.state.backend.media_state(), "protocol": PROTOCOL_VERSION})
             except Exception as exc:
                 LOG.warning("Remote state failed: %s", exc)
                 self.send_error(503)
+            return
+        if parsed.path == "/tv-state.json":
+            backend = self.server.state.backend
+            try:
+                self.send_json(backend.tv_state() if hasattr(backend, "tv_state") else {"raspyTv": False})
+            except Exception as exc:
+                LOG.warning("RaspyTV state failed: %s", exc)
+                self.send_error(503)
+            return
+        if parsed.path in {"/tv-art", "/app-icon"}:
+            backend = self.server.state.backend
+            image = None
+            if parsed.path == "/tv-art" and hasattr(backend, "tv_artwork_image"):
+                image = backend.tv_artwork_image()
+            elif parsed.path == "/app-icon" and hasattr(backend, "app_icon"):
+                image = backend.app_icon(parse_qs(parsed.query).get("id", [""])[0])
+            if image is None:
+                self.send_error(404)
+                return
+            body, content_type = image
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
             return
         if parsed.path == "/game-image":
             game_id = parse_qs(parsed.query).get("id", [""])[0]
@@ -588,7 +771,8 @@ def load_config(path: Path) -> dict:
         if os.name != "nt":
             path.chmod(0o600)
     token = defaults.get("token")
-    if not isinstance(token, str) or len(token) < 16 or token in {"telecomhand", "change-moi-avec-un-code-long"}:
+    weak_allowed = defaults.get("allow_weak_token") is True
+    if not isinstance(token, str) or not token or (not weak_allowed and (len(token) < 16 or token in {"telecomhand", "change-moi-avec-un-code-long"})):
         raise ValueError(f"Configure a unique token of at least 16 characters in {path}")
     return defaults
 
