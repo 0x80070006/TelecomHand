@@ -2,6 +2,12 @@
 
 Toutes les évolutions notables de TelecomHand sont consignées dans ce fichier.
 
+## v1.10.1 — 12 novembre 2026
+
+### Modifié
+
+- Croix directionnelle du mode RaspyTV épurée : disque plat, bouton OK sobre, flèches discrètes.
+
 ## v1.10 — 11 novembre 2026
 
 ### Ajouté

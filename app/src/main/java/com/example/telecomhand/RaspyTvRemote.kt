@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -367,7 +368,7 @@ private fun DPad(enabled: Boolean, modifier: Modifier, onKey: (String) -> Unit) 
     var pressed by remember { mutableStateOf<PadZone?>(null) }
     val haptic = LocalHapticFeedback.current
     val latestOnKey by rememberUpdatedState(onKey)
-    val okScale by animateFloatAsState(if (pressed == PadZone.OK) .92f else 1f, spring(dampingRatio = .55f, stiffness = 900f), label = "ok")
+    val okScale by animateFloatAsState(if (pressed == PadZone.OK) .97f else 1f, spring(stiffness = 1500f), label = "ok")
     val ringAlpha by animateFloatAsState(if (pressed != null && pressed != PadZone.OK) 1f else 0f, spring(stiffness = 1400f), label = "ring")
     var lastZone by remember { mutableStateOf(PadZone.UP) }
     if (pressed != null && pressed != PadZone.OK) lastZone = pressed!!
@@ -408,49 +409,41 @@ private fun DPad(enabled: Boolean, modifier: Modifier, onKey: (String) -> Unit) 
             },
         contentAlignment = Alignment.Center
     ) {
+        // Disque plat, sans dégradé ni repère : seule la zone touchée s'éclaircit.
         Canvas(Modifier.fillMaxSize()) {
             val radius = size.minDimension / 2f
             val inner = radius * OkRatio
-            drawCircle(Brush.verticalGradient(listOf(Surface2, Surface1)), radius)
-            drawCircle(Hairline, radius - .5.dp.toPx(), style = Stroke(1.dp.toPx()))
-            // Repères discrets entre les quatre directions.
-            for (angle in listOf(45f, 135f, 225f, 315f)) {
-                val radians = Math.toRadians(angle.toDouble())
-                val from = Offset(center.x + (inner + 14.dp.toPx()) * kotlin.math.cos(radians).toFloat(), center.y + (inner + 14.dp.toPx()) * kotlin.math.sin(radians).toFloat())
-                val to = Offset(center.x + (radius - 14.dp.toPx()) * kotlin.math.cos(radians).toFloat(), center.y + (radius - 14.dp.toPx()) * kotlin.math.sin(radians).toFloat())
-                drawLine(Hairline, from, to, 1.dp.toPx(), StrokeCap.Round)
-            }
+            drawCircle(Surface1, radius)
             if (ringAlpha > 0f) {
                 val start = when (lastZone) { PadZone.RIGHT -> -45f; PadZone.DOWN -> 45f; PadZone.LEFT -> 135f; else -> -135f }
                 val middle = (radius + inner) / 2f
-                val width = radius - inner - 8.dp.toPx()
                 drawArc(
-                    Raspberry.copy(alpha = .22f * ringAlpha), start + 4f, 82f, useCenter = false,
+                    Color.White.copy(alpha = .06f * ringAlpha), start, 90f, useCenter = false,
                     topLeft = Offset(center.x - middle, center.y - middle), size = Size(middle * 2, middle * 2),
-                    style = Stroke(width, cap = StrokeCap.Round)
+                    style = Stroke(radius - inner)
                 )
             }
         }
-        val arrow = 34.dp
-        PadArrow(Icons.Rounded.KeyboardArrowUp, pressed == PadZone.UP, Modifier.align(Alignment.TopCenter).padding(top = 14.dp).size(arrow))
-        PadArrow(Icons.Rounded.KeyboardArrowDown, pressed == PadZone.DOWN, Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).size(arrow))
-        PadArrow(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, pressed == PadZone.LEFT, Modifier.align(Alignment.CenterStart).padding(start = 14.dp).size(arrow))
-        PadArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, pressed == PadZone.RIGHT, Modifier.align(Alignment.CenterEnd).padding(end = 14.dp).size(arrow))
+        val arrow = 26.dp
+        PadArrow(Icons.Rounded.KeyboardArrowUp, pressed == PadZone.UP, Modifier.align(Alignment.TopCenter).padding(top = 18.dp).size(arrow))
+        PadArrow(Icons.Rounded.KeyboardArrowDown, pressed == PadZone.DOWN, Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp).size(arrow))
+        PadArrow(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, pressed == PadZone.LEFT, Modifier.align(Alignment.CenterStart).padding(start = 18.dp).size(arrow))
+        PadArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, pressed == PadZone.RIGHT, Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).size(arrow))
+        val okBackground by animateColorAsState(if (pressed == PadZone.OK) Surface3 else Surface2, tween(90), label = "okBackground")
         Box(
-            Modifier.fillMaxSize(OkRatio * 2f - .04f).graphicsLayer { scaleX = okScale; scaleY = okScale }
+            Modifier.fillMaxSize(OkRatio * 2f - .06f).graphicsLayer { scaleX = okScale; scaleY = okScale }
                 .clip(CircleShape)
-                .background(Brush.verticalGradient(listOf(Color(0xFFFF5C86), RaspberryDeep)))
-                .border(1.dp, Color.White.copy(alpha = .14f), CircleShape),
+                .background(okBackground),
             contentAlignment = Alignment.Center
         ) {
-            Text("OK", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text("OK", color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.Medium, letterSpacing = .5.sp)
         }
     }
 }
 
 @Composable
 private fun PadArrow(icon: ImageVector, active: Boolean, modifier: Modifier) {
-    val tint by animateColorAsState(if (active) Raspberry else TextSecondary, label = "arrow")
+    val tint by animateColorAsState(if (active) TextPrimary else TextMuted, tween(90), label = "arrow")
     Icon(icon, null, tint = tint, modifier = modifier)
 }
 
