@@ -19,7 +19,7 @@
 
 | Plateforme | Fichier |
 | --- | --- |
-| Android | [TelecomHand-Android-v1.10.1.apk](https://github.com/0x80070006/TelecomHand/releases/download/v1.10.1/TelecomHand-Android-v1.10.1.apk) |
+| Android | [TelecomHand-Android-v1.10.2.apk](https://github.com/0x80070006/TelecomHand/releases/download/v1.10.2/TelecomHand-Android-v1.10.2.apk) |
 | Raspberry Pi | [TelecomHand-RaspberryPi-v1.10.0.tar.gz](https://github.com/0x80070006/TelecomHand/releases/download/v1.10.0/TelecomHand-RaspberryPi-v1.10.0.tar.gz) |
 | Windows x64 | [TelecomHand-Windows-x64-v1.9.0.zip](https://github.com/0x80070006/TelecomHand/releases/download/v1.9.0/TelecomHand-Windows-x64-v1.9.0.zip) |
 
