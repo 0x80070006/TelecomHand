@@ -2,6 +2,22 @@
 
 Toutes les évolutions notables de TelecomHand sont consignées dans ce fichier.
 
+## v1.10.2 — 12 novembre 2026
+
+### Corrigé
+
+- Bouton OK de la croix directionnelle à la bonne taille : il ne masque plus les flèches et correspond à sa zone de toucher.
+- Un défilement de la page qui commence sur la jauge de volume ne coupe plus le son ; sur la barre de lecture, il ne déplace plus la lecture.
+- Depuis l'aperçu d'écran ouvert en mode RaspyTV, Retour ramène à la télécommande.
+- La feuille « Sortie audio » s'ouvre en entier et ne passe plus sous la barre de navigation.
+- Onglet « Télécommande » lisible en entier.
+
+### Modifié
+
+- RaspyTV est détecté dès le lancement, sans passer par l'écran classique ; nouvel essai rapide si la première requête échoue.
+- Flèches du clavier en icônes.
+- README refait, avec des captures de chaque écran.
+
 ## v1.10.1 — 12 novembre 2026
 
 ### Modifié

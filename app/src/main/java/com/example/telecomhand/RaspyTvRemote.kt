@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -211,7 +213,7 @@ private fun TabBar(selected: TvTab, onSelect: (TvTab) -> Unit) {
             val active = tab == selected
             val background by animateColorAsState(if (active) Raspberry.copy(alpha = .16f) else Color.Transparent, label = "tab")
             Row(
-                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(19.dp)).background(background)
+                Modifier.weight(if (active) 1.9f else 1f).height(44.dp).clip(RoundedCornerShape(19.dp)).background(background)
                     .clickable(role = Role.Tab) { onSelect(tab) },
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
             ) {
@@ -355,7 +357,7 @@ private fun padZone(position: Offset, size: Size): PadZone? {
     }
 }
 
-private const val OkRatio = .40f
+private const val OkRatio = .44f
 private const val RepeatDelayMs = 420L
 private const val RepeatIntervalMs = 115L
 
@@ -431,7 +433,7 @@ private fun DPad(enabled: Boolean, modifier: Modifier, onKey: (String) -> Unit) 
         PadArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, pressed == PadZone.RIGHT, Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).size(arrow))
         val okBackground by animateColorAsState(if (pressed == PadZone.OK) Surface3 else Surface2, tween(90), label = "okBackground")
         Box(
-            Modifier.fillMaxSize(OkRatio * 2f - .06f).graphicsLayer { scaleX = okScale; scaleY = okScale }
+            Modifier.fillMaxSize(OkRatio - .03f).graphicsLayer { scaleX = okScale; scaleY = okScale }
                 .clip(CircleShape)
                 .background(okBackground),
             contentAlignment = Alignment.Center
@@ -529,25 +531,15 @@ private fun VolumeRocker(
                     if (!enabled) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown()
-                        val slop = viewConfiguration.touchSlop
-                        var moved = false
-                        var value = (down.position.x / size.width).coerceIn(0f, 1f)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            if (!moved && abs(change.position.x - down.position.x) > slop) moved = true
-                            if (moved) {
-                                value = (change.position.x / size.width).coerceIn(0f, 1f)
-                                dragging = value
-                                change.consume()
-                            }
-                        }
+                        val result = trackHorizontal(down, viewConfiguration.touchSlop) { x -> dragging = (x / size.width).coerceIn(0f, 1f) }
+                        dragging = null
+                        // Un geste vertical fait défiler la page : ni réglage ni coupure du son.
+                        if (result == null) return@awaitEachGesture
+                        val (x, moved) = result
                         if (moved) {
-                            latestSet((value * 100).toInt())
+                            latestSet(((x / size.width).coerceIn(0f, 1f) * 100).toInt())
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         } else latestMute()
-                        dragging = null
                     }
                 }
                 .semantics { contentDescription = if (muted) "Son coupé" else "Volume $volume %" },
@@ -625,6 +617,7 @@ private fun NowPlayingCard(
             SeekBar(
                 fraction = seeking ?: (position / media.duration), accent = accent, enabled = enabled,
                 onDrag = { seeking = it },
+                onCancel = { seeking = null },
                 onCommit = { fraction -> seeking = null; onOp("seek", fraction * media.duration) }
             )
             Row(Modifier.fillMaxWidth()) {
@@ -663,10 +656,35 @@ private fun MediaButton(icon: ImageVector, label: String, enabled: Boolean, onCl
     ) { Icon(icon, label, tint = TextPrimary, modifier = Modifier.size(30.dp)) }
 }
 
-/** Barre de lecture : un toucher ou un glissé positionne la lecture au relâchement. */
+/**
+ * Suit un glissé horizontal et renvoie la dernière abscisse et s'il y a eu glissé. Renvoie null si
+ * le doigt part à la verticale ou si la page défile : le geste appartient alors au défilement.
+ */
+private suspend fun AwaitPointerEventScope.trackHorizontal(down: PointerInputChange, slop: Float, onMove: (Float) -> Unit): Pair<Float, Boolean>? {
+    var moved = false
+    var x = down.position.x
+    while (true) {
+        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return null
+        if (!change.pressed) return x to moved
+        if (!moved) {
+            if (change.isConsumed) return null
+            val delta = change.position - down.position
+            if (abs(delta.y) > slop && abs(delta.y) > abs(delta.x)) return null
+            if (abs(delta.x) > slop) moved = true
+        }
+        if (moved) {
+            x = change.position.x
+            onMove(x)
+            change.consume()
+        }
+    }
+}
+
+/** Barre de lecture : un toucher ou un glissé horizontal positionne la lecture au relâchement. */
 @Composable
-private fun SeekBar(fraction: Float, accent: Color, enabled: Boolean, onDrag: (Float) -> Unit, onCommit: (Float) -> Unit) {
+private fun SeekBar(fraction: Float, accent: Color, enabled: Boolean, onDrag: (Float) -> Unit, onCancel: () -> Unit, onCommit: (Float) -> Unit) {
     val latestDrag by rememberUpdatedState(onDrag)
+    val latestCancel by rememberUpdatedState(onCancel)
     val latestCommit by rememberUpdatedState(onCommit)
     var active by remember { mutableStateOf(false) }
     Canvas(
@@ -674,19 +692,12 @@ private fun SeekBar(fraction: Float, accent: Color, enabled: Boolean, onDrag: (F
             if (!enabled) return@pointerInput
             awaitEachGesture {
                 val down = awaitFirstDown()
-                active = true
-                var value = (down.position.x / size.width).coerceIn(0f, 1f)
-                latestDrag(value)
-                while (true) {
-                    val event = awaitPointerEvent()
-                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    if (!change.pressed) break
-                    value = (change.position.x / size.width).coerceIn(0f, 1f)
-                    latestDrag(value)
-                    change.consume()
+                val result = trackHorizontal(down, viewConfiguration.touchSlop) { x ->
+                    active = true
+                    latestDrag((x / size.width).coerceIn(0f, 1f))
                 }
                 active = false
-                latestCommit(value)
+                if (result == null) latestCancel() else latestCommit((result.first / size.width).coerceIn(0f, 1f))
             }
         }
     ) {
@@ -774,7 +785,7 @@ private fun outputKind(output: TvOutput) = when (output.kind) {
     else -> "Sortie audio"
 }
 
-/** Nom court pour le bouton : « TV », « WH-1000XM4 »… */
+/** Nom court pour le bouton : « TV », « Jack », nom du casque… */
 private fun shortOutputName(output: TvOutput) = when (output.kind) {
     "hdmi" -> "TV"
     "internal" -> "Jack"
@@ -785,8 +796,10 @@ private fun shortOutputName(output: TvOutput) = when (output.kind) {
 @Composable
 private fun AudioSheet(tv: TvState, enabled: Boolean, onDismiss: () -> Unit, onChoose: (String) -> Unit) {
     var connecting by remember { mutableStateOf<String?>(null) }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Surface1, contentColor = TextPrimary) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
+    // Ouverte en entier : la liste reste visible jusqu'au dernier casque.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Surface1, contentColor = TextPrimary) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp)) {
             Text("Sortie audio", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("Le son de la TV passe par l’appareil choisi.", color = TextSecondary, fontSize = 13.sp)
             Spacer(Modifier.height(14.dp))
@@ -800,7 +813,7 @@ private fun AudioSheet(tv: TvState, enabled: Boolean, onDismiss: () -> Unit, onC
             if (tv.bluetooth.isNotEmpty()) {
                 SectionLabel("Casques Bluetooth jumelés")
                 tv.bluetooth.forEach { headset ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconBadge(Icons.Rounded.Bluetooth, ActionBlue, false)
                         Spacer(Modifier.width(14.dp))
                         Text(headset.name, fontSize = 15.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -810,7 +823,7 @@ private fun AudioSheet(tv: TvState, enabled: Boolean, onDismiss: () -> Unit, onC
                         ) { Text(if (connecting == headset.id) "Connexion…" else "Se connecter", fontWeight = FontWeight.SemiBold) }
                     }
                 }
-                Text("Allumez le casque avant de le connecter.", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                Text("Allumez le casque avant de le connecter.", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
             }
         }
     }

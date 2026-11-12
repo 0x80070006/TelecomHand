@@ -41,6 +41,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
@@ -198,10 +199,11 @@ private fun TelecomHandApp() {
         }
     }
     // Détection de RaspyTV : seul l'agent Linux du Raspberry Pi répond à /tv-state.json.
-    LaunchedEffect(selected?.id, connected, screen, tvRefresh) {
-        if (selected == null || !connected || selected.os != DeviceOs.LINUX) {
-            if (!connected && connectionState != ConnectionState.CONNECTING) tvState = TvState()
-            if (selected?.os != DeviceOs.LINUX) tvState = TvState()
+    // Elle passe par HTTP sans attendre la connexion de contrôle : pas d'écran classique fugace au lancement.
+    LaunchedEffect(selected?.id) { tvState = TvState() }
+    LaunchedEffect(selected?.id, selected?.os, connected, screen, tvRefresh) {
+        if (selected == null || selected.os != DeviceOs.LINUX) {
+            tvState = TvState()
             return@LaunchedEffect
         }
         if (tvRefresh > 0) delay(500)
@@ -210,6 +212,7 @@ private fun TelecomHandApp() {
             // Une requête perdue ne fait pas quitter le mode RaspyTV.
             if (next != null) tvState = next
             delay(when {
+                next == null && !tvState.raspyTv -> 1500
                 !tvState.raspyTv -> 12000
                 screen == Screen.HOME -> 2000
                 else -> 6000
@@ -218,7 +221,8 @@ private fun TelecomHandApp() {
     }
 
     fun back() {
-        screen = if (screen == Screen.SHORTCUTS || screen == Screen.PREVIEW) Screen.MORE else Screen.HOME
+        // En mode RaspyTV, l'aperçu s'ouvre depuis la télécommande : on y revient.
+        screen = if ((screen == Screen.SHORTCUTS || screen == Screen.PREVIEW) && !tvState.raspyTv) Screen.MORE else Screen.HOME
     }
     BackHandler(enabled = screen != Screen.HOME) { back() }
 
@@ -895,7 +899,7 @@ internal fun ColumnScope.KeyboardScreen(enabled: Boolean, connection: RemoteConn
         SectionLabel("Navigation")
         KeyRows(enabled, connection, listOf(
             listOf("home" to "Origine", "end" to "Fin", "pageup" to "Pg préc", "pagedown" to "Pg suiv"),
-            listOf("left" to "←", "up" to "↑", "down" to "↓", "right" to "→")
+            listOf("left" to "Gauche", "up" to "Haut", "down" to "Bas", "right" to "Droite")
         ))
         SectionLabel("Système")
         KeyRows(enabled, connection, listOf(
@@ -929,7 +933,14 @@ private fun KeyRows(enabled: Boolean, connection: RemoteConnection, rows: List<L
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (key, label) ->
-                    Key(label, enabled, Modifier.weight(1f)) { connection.send("key", "value" to key) }
+                    val icon = when (key) {
+                        "left" -> Icons.AutoMirrored.Rounded.KeyboardArrowLeft
+                        "right" -> Icons.AutoMirrored.Rounded.KeyboardArrowRight
+                        "up" -> Icons.Rounded.KeyboardArrowUp
+                        "down" -> Icons.Rounded.KeyboardArrowDown
+                        else -> null
+                    }
+                    Key(label, enabled, Modifier.weight(1f), icon = icon) { connection.send("key", "value" to key) }
                 }
                 repeat((4 - row.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
             }
@@ -1394,7 +1405,7 @@ internal class RemoteConnection {
     private fun encodedToken(target: RemoteDevice) = java.net.URLEncoder.encode(target.token, "UTF-8")
 
     private fun getText(url: String, readTimeoutMs: Int): String {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 1800; readTimeout = readTimeoutMs; useCaches = false }
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 1800; readTimeout = readTimeoutMs; useCaches = false; setRequestProperty("Connection", "close") }
         return try { connection.inputStream.bufferedReader().use { it.readText() } } finally { connection.disconnect() }
     }
 
